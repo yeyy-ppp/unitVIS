@@ -1,27 +1,18 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FlaskConical, CheckCircle2, XCircle, Clock, Database, Gauge, Layers } from 'lucide-react';
-import { mockTestCases, computeSummary } from '@/data/mockTestData';
-import StatCard from '@/components/StatCard';
-import TestCaseTable from '@/components/TestCaseTable';
-import DataPreview from '@/components/DataPreview';
+import { FlaskConical, ScanSearch, Code2 } from 'lucide-react';
+import { mockProjectAnalysis, mockGenerationResult } from '@/data/mockTestData';
+import ProjectAnalysisPanel from '@/components/ProjectAnalysisPanel';
+import GenerationResultPanel from '@/components/GenerationResultPanel';
+
+type Tab = 'analysis' | 'generation';
 
 const Index = () => {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'passed' | 'failed' | 'pending'>('all');
+  const [activeTab, setActiveTab] = useState<Tab>('analysis');
 
-  const summary = useMemo(() => computeSummary(mockTestCases), []);
-  const filteredCases = useMemo(
-    () => (filter === 'all' ? mockTestCases : mockTestCases.filter(c => c.status === filter)),
-    [filter]
-  );
-  const selectedCase = mockTestCases.find(c => c.id === selectedId) ?? null;
-
-  const filters: { key: typeof filter; label: string }[] = [
-    { key: 'all', label: '全部' },
-    { key: 'passed', label: '通过' },
-    { key: 'failed', label: '失败' },
-    { key: 'pending', label: '等待' },
+  const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
+    { key: 'analysis', label: '项目分析', icon: ScanSearch },
+    { key: 'generation', label: '生成结果', icon: Code2 },
   ];
 
   return (
@@ -33,54 +24,47 @@ const Index = () => {
             <FlaskConical className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-foreground">单元测试数据生成器</h1>
-            <p className="text-xs text-muted-foreground">自动生成测试用例的模拟数据 · 实时预览</p>
+            <h1 className="text-lg font-bold text-foreground">单元测试代码生成器</h1>
+            <p className="text-xs text-muted-foreground">
+              自动为 <span className="font-mono text-foreground">{mockProjectAnalysis.projectName}</span> 生成单元测试代码 · {mockProjectAnalysis.language}
+            </p>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <StatCard label="总用例" value={summary.total} icon={Layers} color="primary" delay={0} />
-          <StatCard label="通过" value={summary.passed} icon={CheckCircle2} color="success" delay={0.05} />
-          <StatCard label="失败" value={summary.failed} icon={XCircle} color="destructive" delay={0.1} />
-          <StatCard label="等待中" value={summary.pending} icon={Clock} color="warning" delay={0.15} />
-          <StatCard label="通过率" value={`${summary.passRate}%`} icon={Gauge} color="info" delay={0.2} />
-          <StatCard label="数据字段" value={summary.totalDataFields} icon={Database} color="primary" delay={0.25} />
-        </div>
-
-        {/* Filters */}
+        {/* Tab switcher */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.1 }}
           className="flex gap-2"
         >
-          {filters.map(f => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all ${
-                filter === f.key
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+          {tabs.map(t => {
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  activeTab === t.key
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {t.label}
+              </button>
+            );
+          })}
         </motion.div>
 
-        {/* Main content */}
-        <div className="grid lg:grid-cols-5 gap-6">
-          <div className="lg:col-span-3">
-            <TestCaseTable cases={filteredCases} selectedId={selectedId} onSelect={setSelectedId} />
-          </div>
-          <div className="lg:col-span-2">
-            <DataPreview testCase={selectedCase} />
-          </div>
-        </div>
+        {/* Panels */}
+        {activeTab === 'analysis' ? (
+          <ProjectAnalysisPanel analysis={mockProjectAnalysis} />
+        ) : (
+          <GenerationResultPanel summary={mockGenerationResult} />
+        )}
       </main>
     </div>
   );
