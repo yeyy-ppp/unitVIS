@@ -131,5 +131,3 @@ export default function ProjectAnalysisPanel({ analysis }: Props) {
   );
 }
 
-// Need to import ChevronRight
-import { ChevronRight } from 'lucide-react';
