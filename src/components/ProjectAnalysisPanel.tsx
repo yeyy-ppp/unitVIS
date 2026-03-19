@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Layers, Code2, GitBranch, FileCode, ArrowLeft } from 'lucide-react';
+import { Layers, Code2, GitBranch, FileCode, ArrowLeft, ChevronRight } from 'lucide-react';
 import { ProjectAnalysis, ClassInfo } from '@/data/mockTestData';
 import StatCard from './StatCard';
 import { useState } from 'react';
