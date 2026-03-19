@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { LucideIcon } from 'lucide-react';
+import { LucideIcon, ChevronRight } from 'lucide-react';
 
 interface StatCardProps {
   label: string;
@@ -7,6 +7,8 @@ interface StatCardProps {
   icon: LucideIcon;
   color: 'primary' | 'success' | 'destructive' | 'warning' | 'info';
   delay?: number;
+  clickable?: boolean;
+  onClick?: () => void;
 }
 
 const colorMap = {
@@ -17,21 +19,27 @@ const colorMap = {
   info: 'text-info bg-info/10',
 };
 
-export default function StatCard({ label, value, icon: Icon, color, delay = 0 }: StatCardProps) {
+export default function StatCard({ label, value, icon: Icon, color, delay = 0, clickable, onClick }: StatCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay }}
-      className="bg-card rounded-xl border border-border p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow"
+      onClick={onClick}
+      className={`bg-card rounded-xl border border-border p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all ${
+        clickable ? 'cursor-pointer hover:border-primary/30 group' : ''
+      }`}
     >
       <div className={`rounded-lg p-3 ${colorMap[color]}`}>
         <Icon className="w-5 h-5" />
       </div>
-      <div>
+      <div className="flex-1 min-w-0">
         <p className="text-sm text-muted-foreground">{label}</p>
         <p className="text-2xl font-semibold text-card-foreground font-mono">{value}</p>
       </div>
+      {clickable && (
+        <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+      )}
     </motion.div>
   );
 }
