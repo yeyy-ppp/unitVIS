@@ -126,7 +126,14 @@ export default function GenerationResultPanel({ summary }: Props) {
           </div>
         </motion.div>
 
-        <TestMethodDialog method={selectedMethod} onClose={() => setSelectedMethod(null)} />
+        <TestMethodDialog
+          method={selectedMethod}
+          parentClass={selectedClass}
+          isFixed={selectedMethod ? fixedKeys.has(`${selectedClass.id}::${selectedMethod.name}`) : false}
+          isFixing={selectedMethod ? fixingKey === `${selectedClass.id}::${selectedMethod.name}` : false}
+          onFix={handleFix}
+          onClose={() => setSelectedMethod(null)}
+        />
       </>
     );
   }
