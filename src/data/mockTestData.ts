@@ -767,3 +767,70 @@ void testGetPreferences() {
     },
   ],
 };
+
+// ========== 大模型分析结果（焦点 / 类摘要）注入 ==========
+const classAnalysisMap: Record<string, string> = {
+  UserService: '负责用户生命周期管理（创建、查询、更新、删除）与邮箱合法性校验。测试关注点：邮箱重复检测、空字段校验、管理员保护、邮箱正则边界。',
+  OrderService: '订单创建/取消/支付主流程，依赖库存与支付网关。测试关注点：库存不足回滚、订单状态机、优惠券过期与门槛、支付失败路径。',
+  PaymentService: '封装 Stripe 网关的扣款与退款，含 Luhn 卡号校验。测试关注点：金额边界、Stripe 异常分支、退款超额、Luhn 算法正确性。',
+  InventoryService: '库存查询/预占/释放与低库存查询。测试关注点：并发预占、负库存保护、阈值过滤排序。',
+  ShippingCalculator: '运费与时效计算，含跨国加价与地址合法性校验。测试关注点：跨国系数、ZIP 正则、远程区域加天数。',
+  NotificationService: '邮件、短信通道与用户通知偏好。测试关注点：模板渲染、手机号前缀补全、偏好默认值。',
+};
+const methodFocusMap: Record<string, string> = {
+  createUser: '校验邮箱非空与唯一，写入用户并返回。',
+  findById: '按 ID 查询用户，空 ID 返回 Optional.empty。',
+  updateProfile: '局部更新用户字段，处理 null 字段跳过逻辑。',
+  deleteUser: '禁止删除管理员账号，普通用户软删除。',
+  validateEmail: '按 RFC 简化规则校验邮箱合法性，含本地段与域名段。',
+  createOrder: '校验商品列表，预占库存，组装订单并落库。',
+  cancelOrder: '回滚库存并将订单置为 CANCELLED；已发货拒绝。',
+  calculateTotal: '按单价 × 数量累加得到订单总价。',
+  applyDiscount: '校验优惠券有效性与门槛，按百分比/固定额扣减。',
+  processPayment: '调用支付网关并根据结果置订单为 PAID。',
+  charge: '调用 Stripe 扣款，捕获异常并落账务流水。',
+  refund: '按交易号退款，金额不得超过原支付额。',
+  validateCard: '校验卡号格式、有效期、CVV，并应用 Luhn 校验。',
+  getTransaction: '按交易号查询交易记录，缺失抛异常。',
+  checkStock: '查询某 SKU 的剩余库存数量，缺失返回 0。',
+  reserveStock: '预占库存，余量不足返回 false。',
+  releaseStock: '释放被预占的库存，更新 reserved 计数。',
+  getLowStockItems: '筛选低于阈值的库存项并按余量升序返回。',
+  calculateCost: '按距离 + 重量 + 跨国系数计算运费。',
+  estimateDelivery: '按运送方式与是否偏远地区估算到达日期。',
+  validateAddress: '校验街道/城市/国家/邮编格式合法性。',
+  sendEmail: '渲染模板并通过 mailer 发送邮件。',
+  sendSms: '自动补全国家码并通过 smsClient 发送。',
+  getPreferences: '查询用户通知偏好，缺失返回默认值。',
+};
+mockProjectAnalysis.classes.forEach(c => {
+  c.analysis = classAnalysisMap[c.name];
+  c.methods.forEach(m => { m.focus = methodFocusMap[m.name]; });
+});
+
+// ========== 失败原因 / 失败位置 注入 ==========
+const failureMap: Record<string, { reason: string; location: string }> = {
+  testValidateEmail_invalid: {
+    reason: 'AssertionFailedError: expected <false> but was <true>。"foo@bar" 因缺少顶级域被错误判定为合法。',
+    location: 'UserServiceTest.java:88  →  UserService.validateEmail (UserService.java:64)',
+  },
+  testApplyDiscount_expiredCode: {
+    reason: '期望抛出 ExpiredException，但方法返回了正常的折扣金额。过期时间判断疑似使用了 isAfter() 取反。',
+    location: 'OrderServiceTest.java:124  →  OrderService.applyDiscount (OrderService.java:97)',
+  },
+  testValidateCard_invalidNumber: {
+    reason: 'NullPointerException：在调用 num.matches(...) 前未对 null 做保护，正则匹配抛出 NPE。',
+    location: 'PaymentService.java:42 (validateCard)  ←  PaymentServiceTest.java:71',
+  },
+  testValidateAddress_invalid: {
+    reason: 'AssertionFailedError: expected <false> but was <true>。ZIP "BAD" 未匹配到 US 模板时回退到 DEFAULT_ZIP，导致放行。',
+    location: 'ShippingCalculatorTest.java:54  →  ShippingCalculator.validateAddress (ShippingCalculator.java:118)',
+  },
+};
+mockGenerationResult.testClasses.forEach(tc => {
+  tc.methods.forEach(m => {
+    const f = failureMap[m.name];
+    if (f) { m.failureReason = f.reason; m.failureLocation = f.location; }
+  });
+});
+
