@@ -9,7 +9,7 @@ import { ProjectAnalysis, GenerationSummary } from '@/data/mockTestData';
 import { toast } from 'sonner';
 
 interface Props {
-  onApply: (analysis: ProjectAnalysis, summary: GenerationSummary) => void;
+  onApply: (analysis: ProjectAnalysis, summary: GenerationSummary, testIntent: string) => void;
 }
 
 interface FileEntry {
