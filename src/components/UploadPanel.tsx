@@ -24,6 +24,7 @@ export default function UploadPanel({ onApply }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [testIntent, setTestIntent] = useState('');
 
   const handleFiles = async (fileList: FileList | File[]) => {
     const arr = Array.from(fileList);
