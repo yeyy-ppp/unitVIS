@@ -7,6 +7,8 @@ export interface MethodInfo {
   complexity: number;
   linesOfCode: number;
   body: string;
+  /** 大模型生成：方法功能 / 目标 / 测试焦点 */
+  focus?: string;
 }
 
 export interface ClassInfo {
@@ -15,6 +17,8 @@ export interface ClassInfo {
   packageName: string;
   fieldCount: number;
   methods: MethodInfo[];
+  /** 大模型生成：对该类整体的功能/职责/测试关注点摘要 */
+  analysis?: string;
 }
 
 export interface ProjectAnalysis {
@@ -32,6 +36,10 @@ export interface TestMethodResult {
   duration: number;
   assertion: string;
   body: string;
+  /** 失败原因（断言信息或异常） */
+  failureReason?: string;
+  /** 失败位置（文件:行 或 调用栈） */
+  failureLocation?: string;
 }
 
 export interface TestClassResult {
@@ -48,6 +56,14 @@ export interface GenerationSummary {
   overallLineCoverage: number;
   overallBranchCoverage: number;
   overallMutationScore: number;
+  /** 指令覆盖率 (Instruction) */
+  overallInstructionCoverage: number;
+  /** 方法覆盖率 */
+  overallMethodCoverage: number;
+  /** 类覆盖率 */
+  overallClassCoverage: number;
+  /** 测试涵盖代码的平均圈复杂度 */
+  overallComplexity: number;
   testClasses: TestClassResult[];
 }
 
