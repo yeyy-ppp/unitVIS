@@ -112,6 +112,26 @@ export default function UploadPanel({ onApply }: Props) {
         />
       </motion.div>
 
+      <div className="bg-card rounded-xl border border-border p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <label htmlFor="testIntent" className="text-sm font-medium text-card-foreground">
+            测试目标 / 测试意图
+            <span className="ml-2 text-xs font-normal text-muted-foreground">
+              （可选，将注入到测试生成提示词中，引导模型生成更贴合意图的测试代码）
+            </span>
+          </label>
+          <span className="text-[11px] font-mono text-muted-foreground">{testIntent.length}/500</span>
+        </div>
+        <textarea
+          id="testIntent"
+          value={testIntent}
+          onChange={(e) => setTestIntent(e.target.value.slice(0, 500))}
+          placeholder="例如：重点覆盖支付失败回滚分支、卡号 Luhn 校验所有边界、库存并发预占的负值保护，并优先生成异常路径用例。"
+          rows={3}
+          className="w-full text-sm font-mono rounded-md border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+      </div>
+
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-card rounded-lg border border-border p-3">
           <p className="text-xs text-muted-foreground">待测源代码</p>
