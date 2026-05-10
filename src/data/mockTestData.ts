@@ -508,6 +508,10 @@ export const mockGenerationResult: GenerationSummary = {
   overallLineCoverage: 78.5,
   overallBranchCoverage: 65.2,
   overallMutationScore: 58.3,
+  overallInstructionCoverage: 81.2,
+  overallMethodCoverage: 73.6,
+  overallClassCoverage: 100,
+  overallComplexity: 5.8,
   testClasses: [
     {
       id: 'tc-001', name: 'UserServiceTest', targetClass: 'UserService',
