@@ -15,6 +15,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<Tab>('analysis');
   const [analysis, setAnalysis] = useState<ProjectAnalysis>(mockProjectAnalysis);
   const [summary, setSummary] = useState<GenerationSummary>(mockGenerationResult);
+  const [testIntent, setTestIntent] = useState('');
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
     { key: 'analysis', label: '项目分析', icon: ScanSearch },
@@ -64,13 +65,24 @@ const Index = () => {
           })}
         </motion.div>
 
-        {activeTab === 'analysis' && <ProjectAnalysisPanel analysis={analysis} />}
+        {activeTab === 'analysis' && (
+          <>
+            {testIntent && (
+              <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 mb-2">
+                <p className="text-[11px] uppercase tracking-wider text-primary font-semibold mb-1">当前测试意图（已注入提示词）</p>
+                <p className="text-sm text-card-foreground">{testIntent}</p>
+              </div>
+            )}
+            <ProjectAnalysisPanel analysis={analysis} />
+          </>
+        )}
         {activeTab === 'generation' && <GenerationResultPanel summary={summary} />}
         {activeTab === 'upload' && (
           <UploadPanel
-            onApply={(a, s) => {
+            onApply={(a, s, intent) => {
               setAnalysis(a);
               setSummary(s);
+              setTestIntent(intent);
               setActiveTab('analysis');
             }}
           />

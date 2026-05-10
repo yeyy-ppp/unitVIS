@@ -45,6 +45,24 @@ export default function ProjectAnalysisPanel({ analysis }: Props) {
               <h3 className="text-base font-semibold text-card-foreground font-mono">{selectedClass.name}</h3>
               <p className="text-xs text-muted-foreground mt-0.5">{selectedClass.packageName}</p>
             </div>
+            {selectedClass.analysis && (
+              <div className="px-5 py-3 border-b border-border bg-primary/5">
+                <p className="text-[11px] uppercase tracking-wider text-primary font-semibold mb-1.5">AI 类分析</p>
+                <p className="text-sm text-card-foreground leading-relaxed">{selectedClass.analysis}</p>
+                <div className="mt-3">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">所有待测方法焦点</p>
+                  <ul className="space-y-1">
+                    {selectedClass.methods.filter(m => m.focus).map(m => (
+                      <li key={m.name} className="text-xs text-muted-foreground">
+                        <span className="font-mono text-foreground">{m.name}</span>
+                        <span className="mx-1.5">·</span>
+                        {m.focus}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-border">
               {[
                 { label: '方法数', value: cm.methodCount },
@@ -74,6 +92,9 @@ export default function ProjectAnalysisPanel({ analysis }: Props) {
                     <p className="text-xs text-muted-foreground font-mono truncate">
                       ({m.params}) → {m.returnType}
                     </p>
+                    {m.focus && (
+                      <p className="text-xs text-primary/80 mt-0.5 truncate">焦点：{m.focus}</p>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <span className={`text-xs font-mono px-2 py-0.5 rounded-full ${
@@ -178,7 +199,13 @@ function MethodBodyDialog({ method, onClose }: { method: MethodInfo | null; onCl
                 ({method.params}) → {method.returnType} · CC={method.complexity} · {method.linesOfCode} 行
               </DialogDescription>
             </DialogHeader>
-            <pre className="text-xs font-mono bg-code-bg border border-code-border rounded-lg p-4 overflow-auto max-h-[60vh] text-foreground whitespace-pre">
+            {method.focus && (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wider text-primary font-semibold mb-1">AI 方法焦点</p>
+                <p className="text-sm text-card-foreground">{method.focus}</p>
+              </div>
+            )}
+            <pre className="text-xs font-mono bg-code-bg border border-code-border rounded-lg p-4 overflow-auto max-h-[55vh] text-foreground whitespace-pre">
 {method.body}
             </pre>
           </>
