@@ -22,7 +22,7 @@ const statusConfig = {
 
 interface Props { summary: GenerationSummary; }
 
-type StatKey = 'classes' | 'methods' | 'pass' | 'fail' | 'line' | 'branch' | 'mutation' | 'duration';
+type StatKey = 'classes' | 'methods' | 'pass' | 'fail' | 'line' | 'branch' | 'mutation' | 'duration' | 'instruction' | 'methodCov' | 'classCov' | 'cxty';
 
 export default function GenerationResultPanel({ summary }: Props) {
   const [selectedClass, setSelectedClass] = useState<TestClassResult | null>(null);
