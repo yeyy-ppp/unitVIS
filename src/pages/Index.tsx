@@ -15,6 +15,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<Tab>('analysis');
   const [analysis, setAnalysis] = useState<ProjectAnalysis>(mockProjectAnalysis);
   const [summary, setSummary] = useState<GenerationSummary>(mockGenerationResult);
+  const [testIntent, setTestIntent] = useState('');
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
     { key: 'analysis', label: '项目分析', icon: ScanSearch },
