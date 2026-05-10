@@ -92,6 +92,9 @@ export default function ProjectAnalysisPanel({ analysis }: Props) {
                     <p className="text-xs text-muted-foreground font-mono truncate">
                       ({m.params}) → {m.returnType}
                     </p>
+                    {m.focus && (
+                      <p className="text-xs text-primary/80 mt-0.5 truncate">焦点：{m.focus}</p>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <span className={`text-xs font-mono px-2 py-0.5 rounded-full ${
