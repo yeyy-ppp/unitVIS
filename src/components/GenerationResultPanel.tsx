@@ -357,8 +357,3 @@ function StatDrilldown({
     </Dialog>
   );
 }
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
