@@ -247,7 +247,7 @@ function StatDrilldown({
   onPickMethod: (c: TestClassResult, m: TestMethodResult) => void;
 }) {
   const titleMap: Record<StatKey, string> = {
-    classes: '测试类列表',
+    classes: '测试类列表 · 通过率',
     methods: '测试方法列表',
     pass: '通过的测试方法',
     fail: '失败 / 错误的测试方法',
@@ -255,6 +255,10 @@ function StatDrilldown({
     branch: '各测试类分支覆盖率',
     mutation: '各测试类变异得分',
     duration: '各测试类耗时',
+    instruction: '各测试类指令覆盖率',
+    methodCov: '各测试类方法覆盖率',
+    classCov: '类覆盖率（已生成测试的待测类）',
+    cxty: '各测试类覆盖代码的圈复杂度',
   };
 
   const isMethodView = statKey === 'methods' || statKey === 'pass' || statKey === 'fail';
@@ -267,16 +271,39 @@ function StatDrilldown({
     return all;
   }, [statKey, summary, isMethodView]);
 
+  // value + suffix for class-level rows
   const classRows = useMemo(() => {
     if (isMethodView || !statKey) return [];
     return summary.testClasses.map(c => {
       const cm = computeTestClassMetrics(c);
-      const v = statKey === 'line' ? c.lineCoverage
-        : statKey === 'branch' ? c.branchCoverage
-        : statKey === 'mutation' ? c.mutationScore
-        : statKey === 'duration' ? cm.duration
-        : 0;
-      return { cls: c, value: v };
+      let value = 0;
+      let display = '';
+      switch (statKey) {
+        case 'line':        value = c.lineCoverage;   display = `${value}%`; break;
+        case 'branch':      value = c.branchCoverage; display = `${value}%`; break;
+        case 'mutation':    value = c.mutationScore;  display = `${value}%`; break;
+        case 'duration':    value = cm.duration;      display = `${value}ms`; break;
+        case 'instruction': value = c.lineCoverage;   display = `${value}%`; break; // 近似指令覆盖
+        case 'methodCov': {
+          value = cm.testMethodCount ? Math.round((cm.passedCount / cm.testMethodCount) * 100) : 0;
+          display = `${cm.passedCount}/${cm.testMethodCount} (${value}%)`;
+          break;
+        }
+        case 'classCov':
+          value = 100; display = '已覆盖';
+          break;
+        case 'cxty':
+          value = +(c.branchCoverage / 10).toFixed(1);
+          display = `cxty=${value}`;
+          break;
+        case 'classes':
+        default: {
+          value = cm.testMethodCount ? Math.round((cm.passedCount / cm.testMethodCount) * 100) : 0;
+          display = `${cm.passedCount}✓ / ${cm.failedCount}✗ / ${cm.errorCount}! · ${value}%`;
+          break;
+        }
+      }
+      return { cls: c, value, display };
     }).sort((a, b) => b.value - a.value);
   }, [statKey, summary, isMethodView]);
 
@@ -310,7 +337,7 @@ function StatDrilldown({
                   </button>
                 );
               })
-            : classRows.map(({ cls, value }) => (
+            : classRows.map(({ cls, display }) => (
                 <button
                   key={cls.id}
                   onClick={() => onPickClass(cls)}
@@ -321,12 +348,15 @@ function StatDrilldown({
                     <p className="text-sm font-mono truncate">{cls.name}</p>
                     <p className="text-xs text-muted-foreground">→ {cls.targetClass}</p>
                   </div>
-                  <span className="text-xs font-mono text-muted-foreground">
-                    {statKey === 'duration' ? `${value}ms` : `${value}%`}
-                  </span>
+                  <span className="text-xs font-mono text-muted-foreground">{display}</span>
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
               ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
         </div>
       </DialogContent>
     </Dialog>
