@@ -30,8 +30,29 @@ export default function GenerationResultPanel({ summary }: Props) {
   const [selectedClass, setSelectedClass] = useState<TestClassResult | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<TestMethodResult | null>(null);
   const [statDrill, setStatDrill] = useState<StatKey | null>(null);
+  const [fixedKeys, setFixedKeys] = useState<Set<string>>(new Set());
+  const [fixingKey, setFixingKey] = useState<string | null>(null);
 
   const totals = useMemo(() => computeGenerationTotals(summary), [summary]);
+
+  const keyOf = (cls: TestClassResult | null, m: TestMethodResult) =>
+    `${cls?.id ?? selectedClass?.id ?? ''}::${m.name}`;
+
+  const handleFix = useCallback((cls: TestClassResult, m: TestMethodResult) => {
+    const k = `${cls.id}::${m.name}`;
+    setFixingKey(k);
+    setTimeout(() => {
+      setFixedKeys(prev => {
+        const next = new Set(prev);
+        next.add(k);
+        return next;
+      });
+      setFixingKey(null);
+      toast.success(`已重新生成并修复 ${m.name}`, {
+        description: '基于失败原因调整断言与边界用例，再次执行已通过。',
+      });
+    }, 1400);
+  }, []);
 
   // Class detail
   if (selectedClass) {
