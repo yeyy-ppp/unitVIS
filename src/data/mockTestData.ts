@@ -40,6 +40,8 @@ export interface TestMethodResult {
   failureReason?: string;
   /** 失败位置（文件:行 或 调用栈） */
   failureLocation?: string;
+  /** 大模型给出的修复建议（针对失败 / 错误用例） */
+  fixSuggestion?: string;
 }
 
 export interface TestClassResult {
