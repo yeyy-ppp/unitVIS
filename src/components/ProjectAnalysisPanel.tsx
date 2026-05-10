@@ -199,7 +199,13 @@ function MethodBodyDialog({ method, onClose }: { method: MethodInfo | null; onCl
                 ({method.params}) → {method.returnType} · CC={method.complexity} · {method.linesOfCode} 行
               </DialogDescription>
             </DialogHeader>
-            <pre className="text-xs font-mono bg-code-bg border border-code-border rounded-lg p-4 overflow-auto max-h-[60vh] text-foreground whitespace-pre">
+            {method.focus && (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wider text-primary font-semibold mb-1">AI 方法焦点</p>
+                <p className="text-sm text-card-foreground">{method.focus}</p>
+              </div>
+            )}
+            <pre className="text-xs font-mono bg-code-bg border border-code-border rounded-lg p-4 overflow-auto max-h-[55vh] text-foreground whitespace-pre">
 {method.body}
             </pre>
           </>
