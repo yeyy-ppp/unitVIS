@@ -2,14 +2,16 @@ import { motion } from 'framer-motion';
 import {
   FlaskConical, CheckCircle2, XCircle, AlertTriangle, Clock,
   Percent, ArrowLeft, ChevronRight, Target, Shield, GitBranch,
-  Cpu, ListChecks, Layers, Activity,
+  Cpu, ListChecks, Layers, Activity, Wrench, Sparkles, Loader2,
 } from 'lucide-react';
 import {
   GenerationSummary, TestClassResult, TestMethodResult,
   computeTestClassMetrics, computeGenerationTotals,
 } from '@/data/mockTestData';
 import StatCard from './StatCard';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
