@@ -2,14 +2,16 @@ import { motion } from 'framer-motion';
 import {
   FlaskConical, CheckCircle2, XCircle, AlertTriangle, Clock,
   Percent, ArrowLeft, ChevronRight, Target, Shield, GitBranch,
-  Cpu, ListChecks, Layers, Activity,
+  Cpu, ListChecks, Layers, Activity, Wrench, Sparkles, Loader2,
 } from 'lucide-react';
 import {
   GenerationSummary, TestClassResult, TestMethodResult,
   computeTestClassMetrics, computeGenerationTotals,
 } from '@/data/mockTestData';
 import StatCard from './StatCard';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
@@ -28,8 +30,29 @@ export default function GenerationResultPanel({ summary }: Props) {
   const [selectedClass, setSelectedClass] = useState<TestClassResult | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<TestMethodResult | null>(null);
   const [statDrill, setStatDrill] = useState<StatKey | null>(null);
+  const [fixedKeys, setFixedKeys] = useState<Set<string>>(new Set());
+  const [fixingKey, setFixingKey] = useState<string | null>(null);
 
   const totals = useMemo(() => computeGenerationTotals(summary), [summary]);
+
+  const keyOf = (cls: TestClassResult | null, m: TestMethodResult) =>
+    `${cls?.id ?? selectedClass?.id ?? ''}::${m.name}`;
+
+  const handleFix = useCallback((cls: TestClassResult, m: TestMethodResult) => {
+    const k = `${cls.id}::${m.name}`;
+    setFixingKey(k);
+    setTimeout(() => {
+      setFixedKeys(prev => {
+        const next = new Set(prev);
+        next.add(k);
+        return next;
+      });
+      setFixingKey(null);
+      toast.success(`已重新生成并修复 ${m.name}`, {
+        description: '基于失败原因调整断言与边界用例，再次执行已通过。',
+      });
+    }, 1400);
+  }, []);
 
   // Class detail
   if (selectedClass) {
@@ -75,7 +98,9 @@ export default function GenerationResultPanel({ summary }: Props) {
             </div>
             <div className="divide-y divide-border">
               {selectedClass.methods.map((m, i) => {
-                const cfg = statusConfig[m.status];
+                const fixed = fixedKeys.has(`${selectedClass.id}::${m.name}`);
+                const effective = fixed ? 'passed' : m.status;
+                const cfg = statusConfig[effective];
                 const StatusIcon = cfg.icon;
                 return (
                   <motion.button
@@ -90,6 +115,11 @@ export default function GenerationResultPanel({ summary }: Props) {
                       <StatusIcon className="w-3 h-3" />
                       {cfg.label}
                     </span>
+                    {fixed && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary">
+                        <Sparkles className="w-2.5 h-2.5" />已修复
+                      </span>
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-card-foreground font-mono truncate">{m.name}</p>
                       <p className="text-xs text-muted-foreground font-mono">→ {m.targetMethod}</p>
@@ -103,7 +133,14 @@ export default function GenerationResultPanel({ summary }: Props) {
           </div>
         </motion.div>
 
-        <TestMethodDialog method={selectedMethod} onClose={() => setSelectedMethod(null)} />
+        <TestMethodDialog
+          method={selectedMethod}
+          parentClass={selectedClass}
+          isFixed={selectedMethod ? fixedKeys.has(`${selectedClass.id}::${selectedMethod.name}`) : false}
+          isFixing={selectedMethod ? fixingKey === `${selectedClass.id}::${selectedMethod.name}` : false}
+          onFix={handleFix}
+          onClose={() => setSelectedMethod(null)}
+        />
       </>
     );
   }
@@ -195,13 +232,24 @@ export default function GenerationResultPanel({ summary }: Props) {
   );
 }
 
-function TestMethodDialog({ method, onClose }: { method: TestMethodResult | null; onClose: () => void }) {
+function TestMethodDialog({
+  method, parentClass, isFixed, isFixing, onFix, onClose,
+}: {
+  method: TestMethodResult | null;
+  parentClass: TestClassResult | null;
+  isFixed: boolean;
+  isFixing: boolean;
+  onFix: (cls: TestClassResult, m: TestMethodResult) => void;
+  onClose: () => void;
+}) {
   return (
     <Dialog open={!!method} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         {method && (() => {
-          const cfg = statusConfig[method.status];
+          const effectiveStatus = isFixed ? 'passed' : method.status;
+          const cfg = statusConfig[effectiveStatus];
           const Icon = cfg.icon;
+          const isFailing = !isFixed && method.status !== 'passed';
           return (
             <>
               <DialogHeader>
@@ -210,6 +258,11 @@ function TestMethodDialog({ method, onClose }: { method: TestMethodResult | null
                     <Icon className="w-3 h-3" />{cfg.label}
                   </span>
                   {method.name}
+                  {isFixed && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-success/10 text-success">
+                      <Sparkles className="w-3 h-3" />已自动修复
+                    </span>
+                  )}
                 </DialogTitle>
                 <DialogDescription className="font-mono text-xs">
                   → {method.targetMethod} · {method.duration}ms
@@ -222,7 +275,7 @@ function TestMethodDialog({ method, onClose }: { method: TestMethodResult | null
 {method.assertion}
                   </pre>
                 </div>
-                {(method.failureReason || method.failureLocation) && (
+                {isFailing && (method.failureReason || method.failureLocation) && (
                   <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2">
                     <p className="text-[11px] uppercase tracking-wider text-destructive font-semibold">失败详情</p>
                     {method.failureReason && (
@@ -237,6 +290,38 @@ function TestMethodDialog({ method, onClose }: { method: TestMethodResult | null
                         <p className="text-xs font-mono text-foreground">{method.failureLocation}</p>
                       </div>
                     )}
+                  </div>
+                )}
+                {isFailing && method.fixSuggestion && (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[11px] uppercase tracking-wider text-primary font-semibold inline-flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3" />AI 修复建议
+                      </p>
+                      {parentClass && (
+                        <Button
+                          size="sm"
+                          disabled={isFixing}
+                          onClick={() => onFix(parentClass, method)}
+                          className="h-7 px-3 text-xs"
+                        >
+                          {isFixing ? (
+                            <><Loader2 className="w-3 h-3 animate-spin" />修复中…</>
+                          ) : (
+                            <><Wrench className="w-3 h-3" />一键修复</>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{method.fixSuggestion}</p>
+                  </div>
+                )}
+                {isFixed && (
+                  <div className="rounded-lg border border-success/30 bg-success/5 p-3">
+                    <p className="text-[11px] uppercase tracking-wider text-success font-semibold inline-flex items-center gap-1.5 mb-1">
+                      <CheckCircle2 className="w-3 h-3" />修复完成
+                    </p>
+                    <p className="text-xs text-foreground">已根据 AI 建议重新生成测试代码并通过验证，下方为修复后的方法体。</p>
                   </div>
                 )}
                 <div>

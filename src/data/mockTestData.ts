@@ -40,6 +40,8 @@ export interface TestMethodResult {
   failureReason?: string;
   /** 失败位置（文件:行 或 调用栈） */
   failureLocation?: string;
+  /** 大模型给出的修复建议（针对失败 / 错误用例） */
+  fixSuggestion?: string;
 }
 
 export interface TestClassResult {
@@ -809,28 +811,36 @@ mockProjectAnalysis.classes.forEach(c => {
 });
 
 // ========== 失败原因 / 失败位置 注入 ==========
-const failureMap: Record<string, { reason: string; location: string }> = {
+const failureMap: Record<string, { reason: string; location: string; suggestion: string }> = {
   testValidateEmail_invalid: {
     reason: 'AssertionFailedError: expected <false> but was <true>。"foo@bar" 因缺少顶级域被错误判定为合法。',
     location: 'UserServiceTest.java:88  →  UserService.validateEmail (UserService.java:64)',
+    suggestion: '将断言改为 assertFalse(service.validateEmail("foo@bar"))，并补充 "@" 后必须包含 "." 与 TLD 长度 ≥ 2 的正则约束 ^[\\w.+-]+@[\\w-]+\\.[A-Za-z]{2,}$，覆盖 "foo@bar"、"a@b.c"、空字符串三类边界。',
   },
   testApplyDiscount_expiredCode: {
     reason: '期望抛出 ExpiredException，但方法返回了正常的折扣金额。过期时间判断疑似使用了 isAfter() 取反。',
     location: 'OrderServiceTest.java:124  →  OrderService.applyDiscount (OrderService.java:97)',
+    suggestion: '改用 assertThrows(ExpiredException.class, () -> service.applyDiscount(order, "EXPIRED10"))，并 mock Clock 注入固定时间，确保 expiry.isBefore(now) 判定生效；同时补充刚好等于过期时刻的边界用例。',
   },
   testValidateCard_invalidNumber: {
     reason: 'NullPointerException：在调用 num.matches(...) 前未对 null 做保护，正则匹配抛出 NPE。',
     location: 'PaymentService.java:42 (validateCard)  ←  PaymentServiceTest.java:71',
+    suggestion: '将用例预期改为 assertFalse(service.validateCard(null))，并在被测方法入口添加 Objects.requireNonNullElse(num, "") 或前置 null-check；新增 null、空串、非数字三个参数化用例。',
   },
   testValidateAddress_invalid: {
     reason: 'AssertionFailedError: expected <false> but was <true>。ZIP "BAD" 未匹配到 US 模板时回退到 DEFAULT_ZIP，导致放行。',
     location: 'ShippingCalculatorTest.java:54  →  ShippingCalculator.validateAddress (ShippingCalculator.java:118)',
+    suggestion: '关闭 fallback 行为：在 validateAddress 中改为对未识别国家直接返回 false，再使用 @ParameterizedTest 覆盖 US/CN/UK 与未知国家的非法 ZIP 组合，断言全部为 false。',
   },
 };
 mockGenerationResult.testClasses.forEach(tc => {
   tc.methods.forEach(m => {
     const f = failureMap[m.name];
-    if (f) { m.failureReason = f.reason; m.failureLocation = f.location; }
+    if (f) {
+      m.failureReason = f.reason;
+      m.failureLocation = f.location;
+      m.fixSuggestion = f.suggestion;
+    }
   });
 });
 
