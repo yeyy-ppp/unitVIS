@@ -222,6 +222,23 @@ function TestMethodDialog({ method, onClose }: { method: TestMethodResult | null
 {method.assertion}
                   </pre>
                 </div>
+                {(method.failureReason || method.failureLocation) && (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+                    <p className="text-[11px] uppercase tracking-wider text-destructive font-semibold">失败详情</p>
+                    {method.failureReason && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">失败原因</p>
+                        <p className="text-xs font-mono text-foreground whitespace-pre-wrap">{method.failureReason}</p>
+                      </div>
+                    )}
+                    {method.failureLocation && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">失败位置</p>
+                        <p className="text-xs font-mono text-foreground">{method.failureLocation}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div>
                   <p className="text-xs text-muted-foreground mb-1.5">完整测试方法体</p>
                   <pre className="text-xs font-mono bg-code-bg border border-code-border rounded-lg p-4 overflow-auto max-h-[50vh] text-foreground whitespace-pre">
