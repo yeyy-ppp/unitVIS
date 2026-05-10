@@ -73,7 +73,7 @@ export default function UploadPanel({ onApply }: Props) {
     }
     const analysis = buildProjectAnalysis(sources);
     const summary = buildGenerationSummary(sources, coverage);
-    onApply(analysis, summary);
+    onApply(analysis, summary, testIntent.trim());
     toast.success(`已应用：${analysis.classes.length} 个待测类，${summary.testClasses.length} 个测试类`);
   };
 
