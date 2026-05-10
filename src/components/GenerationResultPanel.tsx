@@ -98,7 +98,9 @@ export default function GenerationResultPanel({ summary }: Props) {
             </div>
             <div className="divide-y divide-border">
               {selectedClass.methods.map((m, i) => {
-                const cfg = statusConfig[m.status];
+                const fixed = fixedKeys.has(`${selectedClass.id}::${m.name}`);
+                const effective = fixed ? 'passed' : m.status;
+                const cfg = statusConfig[effective];
                 const StatusIcon = cfg.icon;
                 return (
                   <motion.button
@@ -113,6 +115,11 @@ export default function GenerationResultPanel({ summary }: Props) {
                       <StatusIcon className="w-3 h-3" />
                       {cfg.label}
                     </span>
+                    {fixed && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary">
+                        <Sparkles className="w-2.5 h-2.5" />已修复
+                      </span>
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-card-foreground font-mono truncate">{m.name}</p>
                       <p className="text-xs text-muted-foreground font-mono">→ {m.targetMethod}</p>
