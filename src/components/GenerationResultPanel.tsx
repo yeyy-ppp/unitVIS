@@ -218,13 +218,24 @@ export default function GenerationResultPanel({ summary }: Props) {
   );
 }
 
-function TestMethodDialog({ method, onClose }: { method: TestMethodResult | null; onClose: () => void }) {
+function TestMethodDialog({
+  method, parentClass, isFixed, isFixing, onFix, onClose,
+}: {
+  method: TestMethodResult | null;
+  parentClass: TestClassResult | null;
+  isFixed: boolean;
+  isFixing: boolean;
+  onFix: (cls: TestClassResult, m: TestMethodResult) => void;
+  onClose: () => void;
+}) {
   return (
     <Dialog open={!!method} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         {method && (() => {
-          const cfg = statusConfig[method.status];
+          const effectiveStatus = isFixed ? 'passed' : method.status;
+          const cfg = statusConfig[effectiveStatus];
           const Icon = cfg.icon;
+          const isFailing = !isFixed && method.status !== 'passed';
           return (
             <>
               <DialogHeader>
@@ -233,6 +244,11 @@ function TestMethodDialog({ method, onClose }: { method: TestMethodResult | null
                     <Icon className="w-3 h-3" />{cfg.label}
                   </span>
                   {method.name}
+                  {isFixed && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-success/10 text-success">
+                      <Sparkles className="w-3 h-3" />已自动修复
+                    </span>
+                  )}
                 </DialogTitle>
                 <DialogDescription className="font-mono text-xs">
                   → {method.targetMethod} · {method.duration}ms
@@ -245,7 +261,7 @@ function TestMethodDialog({ method, onClose }: { method: TestMethodResult | null
 {method.assertion}
                   </pre>
                 </div>
-                {(method.failureReason || method.failureLocation) && (
+                {isFailing && (method.failureReason || method.failureLocation) && (
                   <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2">
                     <p className="text-[11px] uppercase tracking-wider text-destructive font-semibold">失败详情</p>
                     {method.failureReason && (
@@ -260,6 +276,38 @@ function TestMethodDialog({ method, onClose }: { method: TestMethodResult | null
                         <p className="text-xs font-mono text-foreground">{method.failureLocation}</p>
                       </div>
                     )}
+                  </div>
+                )}
+                {isFailing && method.fixSuggestion && (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[11px] uppercase tracking-wider text-primary font-semibold inline-flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3" />AI 修复建议
+                      </p>
+                      {parentClass && (
+                        <Button
+                          size="sm"
+                          disabled={isFixing}
+                          onClick={() => onFix(parentClass, method)}
+                          className="h-7 px-3 text-xs"
+                        >
+                          {isFixing ? (
+                            <><Loader2 className="w-3 h-3 animate-spin" />修复中…</>
+                          ) : (
+                            <><Wrench className="w-3 h-3" />一键修复</>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{method.fixSuggestion}</p>
+                  </div>
+                )}
+                {isFixed && (
+                  <div className="rounded-lg border border-success/30 bg-success/5 p-3">
+                    <p className="text-[11px] uppercase tracking-wider text-success font-semibold inline-flex items-center gap-1.5 mb-1">
+                      <CheckCircle2 className="w-3 h-3" />修复完成
+                    </p>
+                    <p className="text-xs text-foreground">已根据 AI 建议重新生成测试代码并通过验证，下方为修复后的方法体。</p>
                   </div>
                 )}
                 <div>
