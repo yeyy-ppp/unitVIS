@@ -131,6 +131,16 @@ export default function GenerationResultPanel({ summary }: Props) {
         <StatCard label="总耗时" value={`${(totals.totalDuration / 1000).toFixed(1)}s`} icon={Clock} color="success" delay={0.35}
           clickable onClick={() => setStatDrill('duration')} />
       </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard label="指令覆盖率" value={`${summary.overallInstructionCoverage}%`} icon={Activity} color="info" delay={0.4}
+          clickable onClick={() => setStatDrill('instruction')} />
+        <StatCard label="方法覆盖率" value={`${summary.overallMethodCoverage}%`} icon={ListChecks} color="success" delay={0.45}
+          clickable onClick={() => setStatDrill('methodCov')} />
+        <StatCard label="类覆盖率" value={`${summary.overallClassCoverage}%`} icon={Layers} color="warning" delay={0.5}
+          clickable onClick={() => setStatDrill('classCov')} />
+        <StatCard label="平均复杂度 cxty" value={summary.overallComplexity} icon={Cpu} color="destructive" delay={0.55}
+          clickable onClick={() => setStatDrill('cxty')} />
+      </div>
 
       <motion.div
         initial={{ opacity: 0 }}
