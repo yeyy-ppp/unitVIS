@@ -183,6 +183,10 @@ export function buildGenerationSummary(sources: ParsedSource[], coverage: Covera
     overallLineCoverage: coverage?.['__overall__']?.lineCoverage ?? overall('lineCoverage'),
     overallBranchCoverage: coverage?.['__overall__']?.branchCoverage ?? overall('branchCoverage'),
     overallMutationScore: coverage?.['__overall__']?.mutationScore ?? overall('mutationScore'),
+    overallInstructionCoverage: (coverage?.['__overall__'] as any)?.instructionCoverage ?? overall('lineCoverage'),
+    overallMethodCoverage: (coverage?.['__overall__'] as any)?.methodCoverage ?? 0,
+    overallClassCoverage: (coverage?.['__overall__'] as any)?.classCoverage ?? (testClasses.length ? 100 : 0),
+    overallComplexity: (coverage?.['__overall__'] as any)?.complexity ?? 0,
     testClasses,
   };
 }
