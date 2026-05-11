@@ -5,6 +5,7 @@ import {
   computeClassMetrics, computeProjectTotals,
 } from '@/data/mockTestData';
 import StatCard from './StatCard';
+import { ProjectAnalysisCharts } from './Charts';
 import { useState, useMemo } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
