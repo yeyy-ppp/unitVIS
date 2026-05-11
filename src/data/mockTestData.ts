@@ -42,6 +42,10 @@ export interface TestMethodResult {
   failureLocation?: string;
   /** 大模型给出的修复建议（针对失败 / 错误用例） */
   fixSuggestion?: string;
+  /** 该测试方法对其待测源方法的逐行覆盖效果 */
+  targetSource?: { line: number; code: string; status: 'covered' | 'partial' | 'uncovered' }[];
+  /** 待测源方法的覆盖统计（基于 targetSource 派生） */
+  targetCoverage?: { covered: number; partial: number; uncovered: number; total: number };
 }
 
 export interface TestClassResult {
@@ -50,6 +54,8 @@ export interface TestClassResult {
   targetClass: string;
   lineCoverage: number;
   branchCoverage: number;
+  /** 指令覆盖率（JaCoCo Instruction Coverage） */
+  instructionCoverage: number;
   mutationScore: number;
   methods: TestMethodResult[];
 }
