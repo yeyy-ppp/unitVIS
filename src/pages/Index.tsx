@@ -1,26 +1,29 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FlaskConical, ScanSearch, Code2, Upload } from 'lucide-react';
+import { FlaskConical, ScanSearch, Code2, Upload, History } from 'lucide-react';
 import {
   mockProjectAnalysis, mockGenerationResult,
-  ProjectAnalysis, GenerationSummary,
+  ProjectAnalysis, GenerationSummary, FixRecord,
 } from '@/data/mockTestData';
 import ProjectAnalysisPanel from '@/components/ProjectAnalysisPanel';
 import GenerationResultPanel from '@/components/GenerationResultPanel';
 import UploadPanel from '@/components/UploadPanel';
+import FixHistoryPanel from '@/components/FixHistoryPanel';
 
-type Tab = 'analysis' | 'generation' | 'upload';
+type Tab = 'analysis' | 'generation' | 'upload' | 'history';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<Tab>('analysis');
   const [analysis, setAnalysis] = useState<ProjectAnalysis>(mockProjectAnalysis);
   const [summary, setSummary] = useState<GenerationSummary>(mockGenerationResult);
   const [testIntent, setTestIntent] = useState('');
+  const [fixHistory, setFixHistory] = useState<FixRecord[]>([]);
 
-  const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
+  const tabs: { key: Tab; label: string; icon: React.ElementType; badge?: number }[] = [
     { key: 'analysis', label: '项目分析', icon: ScanSearch },
     { key: 'generation', label: '生成结果', icon: Code2 },
     { key: 'upload', label: '上传代码', icon: Upload },
+    { key: 'history', label: '修复历史', icon: History, badge: fixHistory.length },
   ];
 
   return (
@@ -60,6 +63,13 @@ const Index = () => {
               >
                 <Icon className="w-4 h-4" />
                 {t.label}
+                {!!t.badge && (
+                  <span className={`ml-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-mono ${
+                    activeTab === t.key ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-primary/15 text-primary'
+                  }`}>
+                    {t.badge}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -76,7 +86,13 @@ const Index = () => {
             <ProjectAnalysisPanel analysis={analysis} />
           </>
         )}
-        {activeTab === 'generation' && <GenerationResultPanel summary={summary} />}
+        {activeTab === 'generation' && (
+          <GenerationResultPanel
+            summary={summary}
+            fixHistory={fixHistory}
+            onApplyFix={(rec) => setFixHistory(prev => [rec, ...prev])}
+          />
+        )}
         {activeTab === 'upload' && (
           <UploadPanel
             onApply={(a, s, intent) => {
@@ -87,6 +103,7 @@ const Index = () => {
             }}
           />
         )}
+        {activeTab === 'history' && <FixHistoryPanel records={fixHistory} />}
       </main>
     </div>
   );

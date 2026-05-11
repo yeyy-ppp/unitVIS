@@ -844,3 +844,101 @@ mockGenerationResult.testClasses.forEach(tc => {
   });
 });
 
+// ========== 修复后的测试代码 + 覆盖率/变异得分提升（提案，未应用前仅供预览）==========
+
+export interface ProposedFix {
+  /** 修复后的完整测试方法体 */
+  fixedBody: string;
+  /** 应用本次修复后，本测试类指标的相对变化（百分点） */
+  metricsDelta: { line: number; branch: number; mutation: number };
+  /** 简短改动摘要 */
+  changeNote: string;
+}
+
+export const proposedFixMap: Record<string, ProposedFix> = {
+  testValidateEmail_invalid: {
+    changeNote: '收紧邮箱正则（要求 TLD ≥ 2 字符），并补充 3 个边界用例。',
+    metricsDelta: { line: +2.4, branch: +5.1, mutation: +6.8 },
+    fixedBody: j(`
+@Test
+void testValidateEmail_invalid() {
+    // 修复后：覆盖三类非法邮箱边界
+    assertFalse(service.validateEmail("foo@bar"));      // 缺少 TLD
+    assertFalse(service.validateEmail("a@b.c"));        // TLD 长度不足
+    assertFalse(service.validateEmail(""));             // 空串
+    assertFalse(service.validateEmail(null));           // null
+    assertTrue(service.validateEmail("user@example.com"));
+}`),
+  },
+  testApplyDiscount_expiredCode: {
+    changeNote: '注入固定 Clock 并改用 assertThrows，新增刚好过期边界用例。',
+    metricsDelta: { line: +1.8, branch: +6.2, mutation: +8.0 },
+    fixedBody: j(`
+@Test
+void testApplyDiscount_expiredCode() {
+    Clock fixed = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), ZoneOffset.UTC);
+    service.setClock(fixed);
+    Coupon c = new Coupon("OLD", BigDecimal.TEN, CouponType.FIXED);
+    c.setExpiresAt(Instant.parse("2024-12-31T23:59:59Z"));
+    when(couponRepo.findByCode("OLD")).thenReturn(Optional.of(c));
+    assertThrows(ExpiredException.class,
+        () -> service.applyDiscount(BigDecimal.valueOf(100), "OLD"));
+}`),
+  },
+  testValidateCard_invalidNumber: {
+    changeNote: '使用 @ParameterizedTest 覆盖 null/空串/非数字三类输入，避免 NPE。',
+    metricsDelta: { line: +3.2, branch: +7.5, mutation: +9.1 },
+    fixedBody: j(`
+@ParameterizedTest
+@NullAndEmptySource
+@ValueSource(strings = {"abcd", "1234"})
+void testValidateCard_invalidNumber(String number) {
+    CardInfo card = new CardInfo();
+    card.setNumber(number);
+    card.setExpMonth(12); card.setExpYear(2030); card.setCvv("123");
+    assertFalse(service.validateCard(card));
+}`),
+  },
+  testValidateAddress_invalid: {
+    changeNote: '断言未识别国家直接拒绝，使用参数化覆盖 US/CN/UK/未知 国家组合。',
+    metricsDelta: { line: +2.0, branch: +4.6, mutation: +5.3 },
+    fixedBody: j(`
+@ParameterizedTest
+@CsvSource({
+    "US, BAD",
+    "CN, 123",
+    "UK, ZZZZ",
+    "XX, 10001"
+})
+void testValidateAddress_invalid(String country, String zip) {
+    Address a = new Address();
+    a.setStreet("1 Main"); a.setCity("X");
+    a.setCountry(country); a.setZipCode(zip);
+    assertFalse(calc.validateAddress(a));
+}`),
+  },
+};
+
+export function getProposedFix(methodName: string): ProposedFix | undefined {
+  return proposedFixMap[methodName];
+}
+
+// ========== 修复历史记录 ==========
+
+export interface FixRecord {
+  id: string;
+  classId: string;
+  className: string;
+  methodName: string;
+  targetMethod: string;
+  beforeBody: string;
+  afterBody: string;
+  beforeMetrics: { lineCoverage: number; branchCoverage: number; mutationScore: number };
+  afterMetrics:  { lineCoverage: number; branchCoverage: number; mutationScore: number };
+  failureReason?: string;
+  fixSuggestion?: string;
+  changeNote?: string;
+  appliedAt: string;
+}
+
+
