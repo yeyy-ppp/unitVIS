@@ -55,7 +55,7 @@ export interface TestClassResult {
   lineCoverage: number;
   branchCoverage: number;
   /** 指令覆盖率（JaCoCo Instruction Coverage） */
-  instructionCoverage: number;
+  instructionCoverage?: number;
   mutationScore: number;
   methods: TestMethodResult[];
 }
