@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import {
   FlaskConical, CheckCircle2, XCircle, AlertTriangle, Clock,
   Percent, ArrowLeft, ChevronRight, Target, Shield, GitBranch,
-  Cpu, ListChecks, Layers, Activity, Wrench, Sparkles, Loader2,
+  Cpu, ListChecks, Layers, Activity, Wrench, Sparkles, Loader2, History,
 } from 'lucide-react';
 import {
   GenerationSummary, TestClassResult, TestMethodResult, FixRecord,
@@ -10,6 +10,7 @@ import {
 } from '@/data/mockTestData';
 import StatCard from './StatCard';
 import { MetricsDiff, CodeBlock } from './FixHistoryPanel';
+import { GenerationCharts, SourceCoverageView } from './Charts';
 import { useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -132,7 +133,7 @@ export default function GenerationResultPanel({ summary, fixHistory, onApplyFix 
                 测试目标: <span className="font-mono text-foreground">{selectedClass.targetClass}</span>
               </p>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-px bg-border">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-px bg-border">
               {[
                 { label: '测试方法', value: cm.testMethodCount },
                 { label: '通过', value: cm.passedCount, color: 'text-success' },
@@ -140,6 +141,7 @@ export default function GenerationResultPanel({ summary, fixHistory, onApplyFix 
                 { label: '错误', value: cm.errorCount, color: 'text-warning' },
                 { label: '行覆盖', value: `${eff.lineCoverage}%` },
                 { label: '分支覆盖', value: `${eff.branchCoverage}%` },
+                { label: '指令覆盖', value: `${selectedClass.instructionCoverage ?? eff.lineCoverage}%` },
                 { label: '变异得分', value: `${eff.mutationScore}%` },
               ].map(item => (
                 <div key={item.label} className="bg-card px-4 py-3">
@@ -192,6 +194,9 @@ export default function GenerationResultPanel({ summary, fixHistory, onApplyFix 
           method={selectedMethod}
           parentClass={selectedClass}
           fixRecord={selectedMethod ? fixedByKey.get(`${selectedClass.id}::${selectedMethod.name}`) ?? null : null}
+          methodHistory={selectedMethod
+            ? fixHistory.filter(r => r.classId === selectedClass.id && r.methodName === selectedMethod.name)
+            : []}
           onPreviewFix={(cls, m) => setPreviewing({ cls, m })}
           onClose={() => setSelectedMethod(null)}
         />
@@ -239,6 +244,8 @@ export default function GenerationResultPanel({ summary, fixHistory, onApplyFix 
         <StatCard label="平均复杂度 cxty" value={summary.overallComplexity} icon={Cpu} color="destructive" delay={0.55}
           clickable onClick={() => setStatDrill('cxty')} />
       </div>
+
+      <GenerationCharts summary={summary} />
 
       <motion.div
         initial={{ opacity: 0 }}
@@ -297,11 +304,12 @@ export default function GenerationResultPanel({ summary, fixHistory, onApplyFix 
 }
 
 function TestMethodDialog({
-  method, parentClass, fixRecord, onPreviewFix, onClose,
+  method, parentClass, fixRecord, methodHistory, onPreviewFix, onClose,
 }: {
   method: TestMethodResult | null;
   parentClass: TestClassResult | null;
   fixRecord: FixRecord | null;
+  methodHistory: FixRecord[];
   onPreviewFix: (cls: TestClassResult, m: TestMethodResult) => void;
   onClose: () => void;
 }) {
@@ -394,6 +402,38 @@ function TestMethodDialog({
 {displayBody}
                   </pre>
                 </div>
+
+                {method.targetSource && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">
+                      该测试对待测方法 <span className="font-mono text-foreground">{method.targetMethod}</span> 的逐行覆盖效果
+                    </p>
+                    <SourceCoverageView source={method.targetSource} coverage={method.targetCoverage} />
+                  </div>
+                )}
+
+                {methodHistory.length > 0 && (
+                  <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-3">
+                    <p className="text-[11px] uppercase tracking-wider text-foreground font-semibold inline-flex items-center gap-1.5">
+                      <History className="w-3 h-3" />本方法的修复历史 · {methodHistory.length} 条
+                    </p>
+                    {methodHistory.map(h => (
+                      <details key={h.id} className="rounded border border-border bg-card">
+                        <summary className="cursor-pointer px-3 py-2 text-xs font-mono text-foreground flex items-center justify-between">
+                          <span>{new Date(h.appliedAt).toLocaleString()}</span>
+                          <span className="text-muted-foreground">{h.changeNote}</span>
+                        </summary>
+                        <div className="p-3 space-y-3 border-t border-border">
+                          <MetricsDiff before={h.beforeMetrics} after={h.afterMetrics} />
+                          <div className="grid md:grid-cols-2 gap-3">
+                            <CodeBlock title="修复前" tone="destructive" body={h.beforeBody} />
+                            <CodeBlock title="修复后" tone="success" body={h.afterBody} />
+                          </div>
+                        </div>
+                      </details>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           );
@@ -516,7 +556,7 @@ function StatDrilldown({
         case 'branch':      value = c.branchCoverage; display = `${value}%`; break;
         case 'mutation':    value = c.mutationScore;  display = `${value}%`; break;
         case 'duration':    value = cm.duration;      display = `${value}ms`; break;
-        case 'instruction': value = c.lineCoverage;   display = `${value}%`; break;
+        case 'instruction': value = c.instructionCoverage ?? c.lineCoverage; display = `${value}%`; break;
         case 'methodCov': {
           value = cm.testMethodCount ? Math.round((cm.passedCount / cm.testMethodCount) * 100) : 0;
           display = `${cm.passedCount}/${cm.testMethodCount} (${value}%)`;

@@ -42,6 +42,10 @@ export interface TestMethodResult {
   failureLocation?: string;
   /** 大模型给出的修复建议（针对失败 / 错误用例） */
   fixSuggestion?: string;
+  /** 该测试方法对其待测源方法的逐行覆盖效果 */
+  targetSource?: { line: number; code: string; status: 'covered' | 'partial' | 'uncovered' }[];
+  /** 待测源方法的覆盖统计（基于 targetSource 派生） */
+  targetCoverage?: { covered: number; partial: number; uncovered: number; total: number };
 }
 
 export interface TestClassResult {
@@ -50,6 +54,8 @@ export interface TestClassResult {
   targetClass: string;
   lineCoverage: number;
   branchCoverage: number;
+  /** 指令覆盖率（JaCoCo Instruction Coverage） */
+  instructionCoverage?: number;
   mutationScore: number;
   methods: TestMethodResult[];
 }
@@ -841,6 +847,44 @@ mockGenerationResult.testClasses.forEach(tc => {
       m.failureLocation = f.location;
       m.fixSuggestion = f.suggestion;
     }
+  });
+});
+
+// ========== 派生：测试类指令覆盖率 + 每方法对源方法的逐行覆盖 ==========
+function hash(s: string) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
+
+mockGenerationResult.testClasses.forEach(tc => {
+  // 指令覆盖率（默认略高于行覆盖）
+  if (tc.instructionCoverage == null) {
+    tc.instructionCoverage = +Math.min(100, tc.lineCoverage + 3 + (hash(tc.id) % 30) / 10).toFixed(1);
+  }
+  const targetCls = mockProjectAnalysis.classes.find(c => c.name === tc.targetClass);
+  tc.methods.forEach(m => {
+    const tgt = targetCls?.methods.find(x => x.name === m.targetMethod);
+    if (!tgt) return;
+    const lines = tgt.body.split('\n');
+    const seedBase = hash(tc.id + '::' + m.name);
+    let covered = 0, partial = 0, uncovered = 0;
+    const isFailing = m.status !== 'passed';
+    const annotated = lines.map((code, idx) => {
+      const trimmed = code.trim();
+      // empty / closing brace lines: covered automatically
+      if (!trimmed || trimmed === '}' || trimmed === '{') {
+        covered++;
+        return { line: idx + 1, code, status: 'covered' as const };
+      }
+      const r = (seedBase + idx * 17) % 100;
+      // failing tests cover less
+      const coverThreshold = isFailing ? 55 : 80;
+      const partialThreshold = isFailing ? 75 : 92;
+      let status: 'covered' | 'partial' | 'uncovered';
+      if (r < coverThreshold) { status = 'covered'; covered++; }
+      else if (r < partialThreshold) { status = 'partial'; partial++; }
+      else { status = 'uncovered'; uncovered++; }
+      return { line: idx + 1, code, status };
+    });
+    m.targetSource = annotated;
+    m.targetCoverage = { covered, partial, uncovered, total: annotated.length };
   });
 });
 

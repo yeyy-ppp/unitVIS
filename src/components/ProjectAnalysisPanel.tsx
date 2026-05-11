@@ -5,6 +5,7 @@ import {
   computeClassMetrics, computeProjectTotals,
 } from '@/data/mockTestData';
 import StatCard from './StatCard';
+import { ProjectAnalysisCharts } from './Charts';
 import { useState, useMemo } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -132,6 +133,8 @@ export default function ProjectAnalysisPanel({ analysis }: Props) {
         <StatCard label="最大复杂度" value={totals.maxComplexity} icon={GitBranch} color="destructive" delay={0.2}
           clickable onClick={() => setStatDrill('max')} />
       </div>
+
+      <ProjectAnalysisCharts analysis={analysis} />
 
       <motion.div
         initial={{ opacity: 0 }}
