@@ -133,7 +133,7 @@ export default function GenerationResultPanel({ summary, fixHistory, onApplyFix 
                 测试目标: <span className="font-mono text-foreground">{selectedClass.targetClass}</span>
               </p>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-px bg-border">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-px bg-border">
               {[
                 { label: '测试方法', value: cm.testMethodCount },
                 { label: '通过', value: cm.passedCount, color: 'text-success' },
@@ -141,6 +141,7 @@ export default function GenerationResultPanel({ summary, fixHistory, onApplyFix 
                 { label: '错误', value: cm.errorCount, color: 'text-warning' },
                 { label: '行覆盖', value: `${eff.lineCoverage}%` },
                 { label: '分支覆盖', value: `${eff.branchCoverage}%` },
+                { label: '指令覆盖', value: `${selectedClass.instructionCoverage ?? eff.lineCoverage}%` },
                 { label: '变异得分', value: `${eff.mutationScore}%` },
               ].map(item => (
                 <div key={item.label} className="bg-card px-4 py-3">
