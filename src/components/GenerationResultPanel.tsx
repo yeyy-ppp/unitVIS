@@ -194,6 +194,9 @@ export default function GenerationResultPanel({ summary, fixHistory, onApplyFix 
           method={selectedMethod}
           parentClass={selectedClass}
           fixRecord={selectedMethod ? fixedByKey.get(`${selectedClass.id}::${selectedMethod.name}`) ?? null : null}
+          methodHistory={selectedMethod
+            ? fixHistory.filter(r => r.classId === selectedClass.id && r.methodName === selectedMethod.name)
+            : []}
           onPreviewFix={(cls, m) => setPreviewing({ cls, m })}
           onClose={() => setSelectedMethod(null)}
         />
