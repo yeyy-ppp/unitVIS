@@ -134,6 +134,8 @@ export default function ProjectAnalysisPanel({ analysis }: Props) {
           clickable onClick={() => setStatDrill('max')} />
       </div>
 
+      <ProjectAnalysisCharts analysis={analysis} />
+
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
