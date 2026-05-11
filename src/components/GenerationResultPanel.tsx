@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import {
   FlaskConical, CheckCircle2, XCircle, AlertTriangle, Clock,
   Percent, ArrowLeft, ChevronRight, Target, Shield, GitBranch,
-  Cpu, ListChecks, Layers, Activity, Wrench, Sparkles, Loader2,
+  Cpu, ListChecks, Layers, Activity, Wrench, Sparkles, Loader2, History,
 } from 'lucide-react';
 import {
   GenerationSummary, TestClassResult, TestMethodResult, FixRecord,
