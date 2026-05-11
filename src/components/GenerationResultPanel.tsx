@@ -5,10 +5,11 @@ import {
   Cpu, ListChecks, Layers, Activity, Wrench, Sparkles, Loader2,
 } from 'lucide-react';
 import {
-  GenerationSummary, TestClassResult, TestMethodResult,
-  computeTestClassMetrics, computeGenerationTotals,
+  GenerationSummary, TestClassResult, TestMethodResult, FixRecord,
+  computeTestClassMetrics, computeGenerationTotals, getProposedFix,
 } from '@/data/mockTestData';
 import StatCard from './StatCard';
+import { MetricsDiff, CodeBlock } from './FixHistoryPanel';
 import { useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -22,41 +23,94 @@ const statusConfig = {
   error:  { icon: AlertTriangle, label: '错误', className: 'text-warning bg-warning/10' },
 };
 
-interface Props { summary: GenerationSummary; }
+interface Props {
+  summary: GenerationSummary;
+  fixHistory: FixRecord[];
+  onApplyFix: (record: FixRecord) => void;
+}
 
 type StatKey = 'classes' | 'methods' | 'pass' | 'fail' | 'line' | 'branch' | 'mutation' | 'duration' | 'instruction' | 'methodCov' | 'classCov' | 'cxty';
 
-export default function GenerationResultPanel({ summary }: Props) {
+export default function GenerationResultPanel({ summary, fixHistory, onApplyFix }: Props) {
   const [selectedClass, setSelectedClass] = useState<TestClassResult | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<TestMethodResult | null>(null);
   const [statDrill, setStatDrill] = useState<StatKey | null>(null);
-  const [fixedKeys, setFixedKeys] = useState<Set<string>>(new Set());
-  const [fixingKey, setFixingKey] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState<{ cls: TestClassResult; m: TestMethodResult } | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  // 已修复的方法 → 记录映射
+  const fixedByKey = useMemo(() => {
+    const map = new Map<string, FixRecord>();
+    fixHistory.forEach(r => map.set(`${r.classId}::${r.methodName}`, r));
+    return map;
+  }, [fixHistory]);
 
   const totals = useMemo(() => computeGenerationTotals(summary), [summary]);
 
-  const keyOf = (cls: TestClassResult | null, m: TestMethodResult) =>
-    `${cls?.id ?? selectedClass?.id ?? ''}::${m.name}`;
+  // 生效后的测试类指标（叠加修复后的 delta，用于展示）
+  const effectiveClassMetrics = useCallback((cls: TestClassResult) => {
+    let line = cls.lineCoverage, branch = cls.branchCoverage, mutation = cls.mutationScore;
+    cls.methods.forEach(m => {
+      const rec = fixedByKey.get(`${cls.id}::${m.name}`);
+      if (rec) {
+        line     += rec.afterMetrics.lineCoverage   - rec.beforeMetrics.lineCoverage;
+        branch   += rec.afterMetrics.branchCoverage - rec.beforeMetrics.branchCoverage;
+        mutation += rec.afterMetrics.mutationScore  - rec.beforeMetrics.mutationScore;
+      }
+    });
+    return {
+      lineCoverage:   +Math.min(100, line).toFixed(1),
+      branchCoverage: +Math.min(100, branch).toFixed(1),
+      mutationScore:  +Math.min(100, mutation).toFixed(1),
+    };
+  }, [fixedByKey]);
 
-  const handleFix = useCallback((cls: TestClassResult, m: TestMethodResult) => {
-    const k = `${cls.id}::${m.name}`;
-    setFixingKey(k);
+  const handleConfirmFix = useCallback(() => {
+    if (!previewing) return;
+    const { cls, m } = previewing;
+    const proposed = getProposedFix(m.name);
+    if (!proposed) return;
+    setConfirming(true);
     setTimeout(() => {
-      setFixedKeys(prev => {
-        const next = new Set(prev);
-        next.add(k);
-        return next;
+      const before = {
+        lineCoverage: cls.lineCoverage,
+        branchCoverage: cls.branchCoverage,
+        mutationScore: cls.mutationScore,
+      };
+      const after = {
+        lineCoverage: +Math.min(100, before.lineCoverage + proposed.metricsDelta.line).toFixed(1),
+        branchCoverage: +Math.min(100, before.branchCoverage + proposed.metricsDelta.branch).toFixed(1),
+        mutationScore: +Math.min(100, before.mutationScore + proposed.metricsDelta.mutation).toFixed(1),
+      };
+      const record: FixRecord = {
+        id: `${cls.id}-${m.name}-${Date.now()}`,
+        classId: cls.id,
+        className: cls.name,
+        methodName: m.name,
+        targetMethod: m.targetMethod,
+        beforeBody: m.body,
+        afterBody: proposed.fixedBody,
+        beforeMetrics: before,
+        afterMetrics: after,
+        failureReason: m.failureReason,
+        fixSuggestion: m.fixSuggestion,
+        changeNote: proposed.changeNote,
+        appliedAt: new Date().toISOString(),
+      };
+      onApplyFix(record);
+      setConfirming(false);
+      setPreviewing(null);
+      setSelectedMethod(null);
+      toast.success(`已应用修复 · ${m.name}`, {
+        description: '修复历史已更新，可在「修复历史」标签页查看。',
       });
-      setFixingKey(null);
-      toast.success(`已重新生成并修复 ${m.name}`, {
-        description: '基于失败原因调整断言与边界用例，再次执行已通过。',
-      });
-    }, 1400);
-  }, []);
+    }, 1000);
+  }, [previewing, onApplyFix]);
 
   // Class detail
   if (selectedClass) {
     const cm = computeTestClassMetrics(selectedClass);
+    const eff = effectiveClassMetrics(selectedClass);
     return (
       <>
         <motion.div
@@ -84,9 +138,9 @@ export default function GenerationResultPanel({ summary }: Props) {
                 { label: '通过', value: cm.passedCount, color: 'text-success' },
                 { label: '失败', value: cm.failedCount, color: 'text-destructive' },
                 { label: '错误', value: cm.errorCount, color: 'text-warning' },
-                { label: '行覆盖', value: `${selectedClass.lineCoverage}%` },
-                { label: '分支覆盖', value: `${selectedClass.branchCoverage}%` },
-                { label: '变异得分', value: `${selectedClass.mutationScore}%` },
+                { label: '行覆盖', value: `${eff.lineCoverage}%` },
+                { label: '分支覆盖', value: `${eff.branchCoverage}%` },
+                { label: '变异得分', value: `${eff.mutationScore}%` },
               ].map(item => (
                 <div key={item.label} className="bg-card px-4 py-3">
                   <p className="text-xs text-muted-foreground">{item.label}</p>
@@ -98,7 +152,8 @@ export default function GenerationResultPanel({ summary }: Props) {
             </div>
             <div className="divide-y divide-border">
               {selectedClass.methods.map((m, i) => {
-                const fixed = fixedKeys.has(`${selectedClass.id}::${m.name}`);
+                const rec = fixedByKey.get(`${selectedClass.id}::${m.name}`);
+                const fixed = !!rec;
                 const effective = fixed ? 'passed' : m.status;
                 const cfg = statusConfig[effective];
                 const StatusIcon = cfg.icon;
@@ -136,10 +191,16 @@ export default function GenerationResultPanel({ summary }: Props) {
         <TestMethodDialog
           method={selectedMethod}
           parentClass={selectedClass}
-          isFixed={selectedMethod ? fixedKeys.has(`${selectedClass.id}::${selectedMethod.name}`) : false}
-          isFixing={selectedMethod ? fixingKey === `${selectedClass.id}::${selectedMethod.name}` : false}
-          onFix={handleFix}
+          fixRecord={selectedMethod ? fixedByKey.get(`${selectedClass.id}::${selectedMethod.name}`) ?? null : null}
+          onPreviewFix={(cls, m) => setPreviewing({ cls, m })}
           onClose={() => setSelectedMethod(null)}
+        />
+
+        <FixPreviewDialog
+          previewing={previewing}
+          confirming={confirming}
+          onCancel={() => setPreviewing(null)}
+          onConfirm={handleConfirmFix}
         />
       </>
     );
@@ -191,7 +252,10 @@ export default function GenerationResultPanel({ summary }: Props) {
         <div className="divide-y divide-border">
           {summary.testClasses.map((tc, i) => {
             const cm = computeTestClassMetrics(tc);
-            const passRate = cm.testMethodCount ? Math.round((cm.passedCount / cm.testMethodCount) * 100) : 0;
+            const eff = effectiveClassMetrics(tc);
+            const fixedHere = tc.methods.filter(m => fixedByKey.has(`${tc.id}::${m.name}`)).length;
+            const effectivePassed = cm.passedCount + fixedHere;
+            const passRate = cm.testMethodCount ? Math.round((effectivePassed / cm.testMethodCount) * 100) : 0;
             return (
               <motion.button
                 key={tc.id}
@@ -209,10 +273,10 @@ export default function GenerationResultPanel({ summary }: Props) {
                   <p className="text-xs text-muted-foreground">→ {tc.targetClass}</p>
                 </div>
                 <div className="hidden sm:flex items-center gap-4 text-xs text-muted-foreground font-mono">
-                  <span className="text-success">{cm.passedCount}✓</span>
-                  {cm.failedCount > 0 && <span className="text-destructive">{cm.failedCount}✗</span>}
+                  <span className="text-success">{effectivePassed}✓</span>
+                  {(cm.failedCount - fixedHere) > 0 && <span className="text-destructive">{Math.max(0, cm.failedCount - fixedHere)}✗</span>}
                   {cm.errorCount > 0 && <span className="text-warning">{cm.errorCount}!</span>}
-                  <span>行覆盖 {tc.lineCoverage}%</span>
+                  <span>行覆盖 {eff.lineCoverage}%</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
               </motion.button>
@@ -233,23 +297,25 @@ export default function GenerationResultPanel({ summary }: Props) {
 }
 
 function TestMethodDialog({
-  method, parentClass, isFixed, isFixing, onFix, onClose,
+  method, parentClass, fixRecord, onPreviewFix, onClose,
 }: {
   method: TestMethodResult | null;
   parentClass: TestClassResult | null;
-  isFixed: boolean;
-  isFixing: boolean;
-  onFix: (cls: TestClassResult, m: TestMethodResult) => void;
+  fixRecord: FixRecord | null;
+  onPreviewFix: (cls: TestClassResult, m: TestMethodResult) => void;
   onClose: () => void;
 }) {
   return (
     <Dialog open={!!method} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         {method && (() => {
+          const isFixed = !!fixRecord;
           const effectiveStatus = isFixed ? 'passed' : method.status;
           const cfg = statusConfig[effectiveStatus];
           const Icon = cfg.icon;
           const isFailing = !isFixed && method.status !== 'passed';
+          const hasProposal = !!getProposedFix(method.name);
+          const displayBody = fixRecord ? fixRecord.afterBody : method.body;
           return (
             <>
               <DialogHeader>
@@ -260,7 +326,7 @@ function TestMethodDialog({
                   {method.name}
                   {isFixed && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-success/10 text-success">
-                      <Sparkles className="w-3 h-3" />已自动修复
+                      <Sparkles className="w-3 h-3" />已应用修复
                     </span>
                   )}
                 </DialogTitle>
@@ -298,38 +364,104 @@ function TestMethodDialog({
                       <p className="text-[11px] uppercase tracking-wider text-primary font-semibold inline-flex items-center gap-1.5">
                         <Sparkles className="w-3 h-3" />AI 修复建议
                       </p>
-                      {parentClass && (
+                      {parentClass && hasProposal && (
                         <Button
                           size="sm"
-                          disabled={isFixing}
-                          onClick={() => onFix(parentClass, method)}
+                          onClick={() => onPreviewFix(parentClass, method)}
                           className="h-7 px-3 text-xs"
                         >
-                          {isFixing ? (
-                            <><Loader2 className="w-3 h-3 animate-spin" />修复中…</>
-                          ) : (
-                            <><Wrench className="w-3 h-3" />一键修复</>
-                          )}
+                          <Wrench className="w-3 h-3" />一键修复（预览对比）
                         </Button>
                       )}
                     </div>
                     <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{method.fixSuggestion}</p>
                   </div>
                 )}
-                {isFixed && (
-                  <div className="rounded-lg border border-success/30 bg-success/5 p-3">
-                    <p className="text-[11px] uppercase tracking-wider text-success font-semibold inline-flex items-center gap-1.5 mb-1">
-                      <CheckCircle2 className="w-3 h-3" />修复完成
+                {isFixed && fixRecord && (
+                  <div className="rounded-lg border border-success/30 bg-success/5 p-3 space-y-2">
+                    <p className="text-[11px] uppercase tracking-wider text-success font-semibold inline-flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3 h-3" />修复已生效
                     </p>
-                    <p className="text-xs text-foreground">已根据 AI 建议重新生成测试代码并通过验证，下方为修复后的方法体。</p>
+                    <p className="text-xs text-foreground">{fixRecord.changeNote}</p>
+                    <MetricsDiff before={fixRecord.beforeMetrics} after={fixRecord.afterMetrics} />
                   </div>
                 )}
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1.5">完整测试方法体</p>
+                  <p className="text-xs text-muted-foreground mb-1.5">
+                    {isFixed ? '修复后测试方法体' : '完整测试方法体'}
+                  </p>
                   <pre className="text-xs font-mono bg-code-bg border border-code-border rounded-lg p-4 overflow-auto max-h-[50vh] text-foreground whitespace-pre">
-{method.body}
+{displayBody}
                   </pre>
                 </div>
+              </div>
+            </>
+          );
+        })()}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function FixPreviewDialog({
+  previewing, confirming, onCancel, onConfirm,
+}: {
+  previewing: { cls: TestClassResult; m: TestMethodResult } | null;
+  confirming: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const proposed = previewing ? getProposedFix(previewing.m.name) : undefined;
+  return (
+    <Dialog open={!!previewing} onOpenChange={(o) => !o && !confirming && onCancel()}>
+      <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
+        {previewing && proposed && (() => {
+          const before = {
+            lineCoverage: previewing.cls.lineCoverage,
+            branchCoverage: previewing.cls.branchCoverage,
+            mutationScore: previewing.cls.mutationScore,
+          };
+          const after = {
+            lineCoverage:   +Math.min(100, before.lineCoverage   + proposed.metricsDelta.line).toFixed(1),
+            branchCoverage: +Math.min(100, before.branchCoverage + proposed.metricsDelta.branch).toFixed(1),
+            mutationScore:  +Math.min(100, before.mutationScore  + proposed.metricsDelta.mutation).toFixed(1),
+          };
+          return (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-mono flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  修复预览 · {previewing.m.name}
+                </DialogTitle>
+                <DialogDescription>
+                  请确认修复前后的代码与评估指标变化，确认后即变更测试代码并写入修复历史。
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+                  <p className="text-[11px] uppercase tracking-wider text-primary font-semibold mb-1">变更摘要</p>
+                  <p className="text-xs text-foreground">{proposed.changeNote}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">评估指标对比（{previewing.cls.name}）</p>
+                  <MetricsDiff before={before} after={after} />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-3">
+                  <CodeBlock title="修复前" tone="destructive" body={previewing.m.body} />
+                  <CodeBlock title="修复后" tone="success" body={proposed.fixedBody} />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border mt-4">
+                <Button variant="ghost" onClick={onCancel} disabled={confirming}>取消</Button>
+                <Button onClick={onConfirm} disabled={confirming}>
+                  {confirming
+                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />应用中…</>
+                    : <><CheckCircle2 className="w-3.5 h-3.5" />确认变更并使用修复后代码</>}
+                </Button>
               </div>
             </>
           );
@@ -373,7 +505,6 @@ function StatDrilldown({
     return all;
   }, [statKey, summary, isMethodView]);
 
-  // value + suffix for class-level rows
   const classRows = useMemo(() => {
     if (isMethodView || !statKey) return [];
     return summary.testClasses.map(c => {
@@ -385,7 +516,7 @@ function StatDrilldown({
         case 'branch':      value = c.branchCoverage; display = `${value}%`; break;
         case 'mutation':    value = c.mutationScore;  display = `${value}%`; break;
         case 'duration':    value = cm.duration;      display = `${value}ms`; break;
-        case 'instruction': value = c.lineCoverage;   display = `${value}%`; break; // 近似指令覆盖
+        case 'instruction': value = c.lineCoverage;   display = `${value}%`; break;
         case 'methodCov': {
           value = cm.testMethodCount ? Math.round((cm.passedCount / cm.testMethodCount) * 100) : 0;
           display = `${cm.passedCount}/${cm.testMethodCount} (${value}%)`;
