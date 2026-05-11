@@ -304,11 +304,12 @@ export default function GenerationResultPanel({ summary, fixHistory, onApplyFix 
 }
 
 function TestMethodDialog({
-  method, parentClass, fixRecord, onPreviewFix, onClose,
+  method, parentClass, fixRecord, methodHistory, onPreviewFix, onClose,
 }: {
   method: TestMethodResult | null;
   parentClass: TestClassResult | null;
   fixRecord: FixRecord | null;
+  methodHistory: FixRecord[];
   onPreviewFix: (cls: TestClassResult, m: TestMethodResult) => void;
   onClose: () => void;
 }) {
