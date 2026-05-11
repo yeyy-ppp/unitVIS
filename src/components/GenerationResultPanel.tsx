@@ -556,7 +556,7 @@ function StatDrilldown({
         case 'branch':      value = c.branchCoverage; display = `${value}%`; break;
         case 'mutation':    value = c.mutationScore;  display = `${value}%`; break;
         case 'duration':    value = cm.duration;      display = `${value}ms`; break;
-        case 'instruction': value = c.lineCoverage;   display = `${value}%`; break;
+        case 'instruction': value = c.instructionCoverage ?? c.lineCoverage; display = `${value}%`; break;
         case 'methodCov': {
           value = cm.testMethodCount ? Math.round((cm.passedCount / cm.testMethodCount) * 100) : 0;
           display = `${cm.passedCount}/${cm.testMethodCount} (${value}%)`;
