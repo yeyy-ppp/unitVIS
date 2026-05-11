@@ -314,9 +314,10 @@ export function SourceCoverageView({
 }
 
 function Legend2({ color, label }: { color: 'success' | 'warning' | 'destructive'; label: string }) {
+  const cls = color === 'success' ? 'bg-success' : color === 'warning' ? 'bg-warning' : 'bg-destructive';
   return (
     <span className="inline-flex items-center gap-1">
-      <span className={`w-2 h-2 rounded-sm bg-${color}`} />
+      <span className={`w-2 h-2 rounded-sm ${cls}`} />
       <span className="text-muted-foreground">{label}</span>
     </span>
   );
