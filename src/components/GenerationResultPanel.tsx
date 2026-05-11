@@ -402,6 +402,38 @@ function TestMethodDialog({
 {displayBody}
                   </pre>
                 </div>
+
+                {method.targetSource && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">
+                      该测试对待测方法 <span className="font-mono text-foreground">{method.targetMethod}</span> 的逐行覆盖效果
+                    </p>
+                    <SourceCoverageView source={method.targetSource} coverage={method.targetCoverage} />
+                  </div>
+                )}
+
+                {methodHistory.length > 0 && (
+                  <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-3">
+                    <p className="text-[11px] uppercase tracking-wider text-foreground font-semibold inline-flex items-center gap-1.5">
+                      <History className="w-3 h-3" />本方法的修复历史 · {methodHistory.length} 条
+                    </p>
+                    {methodHistory.map(h => (
+                      <details key={h.id} className="rounded border border-border bg-card">
+                        <summary className="cursor-pointer px-3 py-2 text-xs font-mono text-foreground flex items-center justify-between">
+                          <span>{new Date(h.appliedAt).toLocaleString()}</span>
+                          <span className="text-muted-foreground">{h.changeNote}</span>
+                        </summary>
+                        <div className="p-3 space-y-3 border-t border-border">
+                          <MetricsDiff before={h.beforeMetrics} after={h.afterMetrics} />
+                          <div className="grid md:grid-cols-2 gap-3">
+                            <CodeBlock title="修复前" tone="destructive" body={h.beforeBody} />
+                            <CodeBlock title="修复后" tone="success" body={h.afterBody} />
+                          </div>
+                        </div>
+                      </details>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           );
