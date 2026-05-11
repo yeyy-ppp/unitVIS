@@ -10,6 +10,7 @@ import {
 } from '@/data/mockTestData';
 import StatCard from './StatCard';
 import { MetricsDiff, CodeBlock } from './FixHistoryPanel';
+import { GenerationCharts, SourceCoverageView } from './Charts';
 import { useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
