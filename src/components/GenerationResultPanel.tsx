@@ -242,6 +242,8 @@ export default function GenerationResultPanel({ summary, fixHistory, onApplyFix 
           clickable onClick={() => setStatDrill('cxty')} />
       </div>
 
+      <GenerationCharts summary={summary} />
+
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
