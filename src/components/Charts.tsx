@@ -2,10 +2,11 @@ import { motion } from 'framer-motion';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, Legend, RadarChart, PolarGrid, PolarAngleAxis,
-  PolarRadiusAxis, Radar, LabelList,
+  PolarRadiusAxis, Radar,
+  ScatterChart, Scatter, ZAxis,
 } from 'recharts';
 import { useState, useMemo } from 'react';
-import { ArrowLeft, BarChart3, PieChart as PieIcon, Network, Activity } from 'lucide-react';
+import { ArrowLeft, BarChart3, PieChart as PieIcon, Sparkles, Activity } from 'lucide-react';
 import {
   ProjectAnalysis, GenerationSummary,
   computeClassMetrics, computeTestClassMetrics,
