@@ -240,7 +240,7 @@ export function GenerationCharts({ summary }: { summary: GenerationSummary }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3 }}
-      className="grid lg:grid-cols-3 gap-4"
+      className="grid lg:grid-cols-2 gap-4"
     >
       <ChartCard title="测试结果分布" icon={PieIcon}>
         <ResponsiveContainer width="100%" height={220}>
@@ -264,22 +264,6 @@ export function GenerationCharts({ summary }: { summary: GenerationSummary }) {
             <Radar name="覆盖率" dataKey="value" stroke={C.primary} fill={C.primary} fillOpacity={0.3} />
             <Tooltip {...tooltipStyle} />
           </RadarChart>
-        </ResponsiveContainer>
-      </ChartCard>
-
-      <ChartCard title="各测试类覆盖率对比" icon={BarChart3}>
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={covData} margin={{ top: 5, right: 6, left: -16, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-            <XAxis dataKey="name" tick={{ fontSize: 9, fill: C.muted, fontFamily: 'JetBrains Mono' }} />
-            <YAxis tick={{ fontSize: 10, fill: C.muted }} domain={[0, 100]} />
-            <Tooltip {...tooltipStyle} />
-            <Legend wrapperStyle={{ fontSize: 10 }} />
-            <Bar dataKey="line" name="行" fill={C.primary} radius={[3, 3, 0, 0]} />
-            <Bar dataKey="branch" name="分支" fill={C.warning} radius={[3, 3, 0, 0]} />
-            <Bar dataKey="instruction" name="指令" fill={C.info} radius={[3, 3, 0, 0]} />
-            <Bar dataKey="mutation" name="变异" fill={C.accent} radius={[3, 3, 0, 0]} />
-          </BarChart>
         </ResponsiveContainer>
       </ChartCard>
     </motion.div>
