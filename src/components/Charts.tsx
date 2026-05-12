@@ -128,81 +128,87 @@ function ClassMethodDrilldown({ analysis }: { analysis: ProjectAnalysis }) {
   const complexityFill = (cx: number) =>
     cx > 8 ? C.destructive : cx > 5 ? C.warning : C.success;
 
-  const data = selectedClass ? methodBubbles : classBubbles;
-  const xLabel = selectedClass ? '方法序号' : '方法数';
-  const tooltipFmt = (_v: any, _n: any, p: any) => {
-    const d = p?.payload;
-    if (!d) return ['', ''];
-    return [
-      selectedClass
-        ? `${d.lines} 行 · CC ${d.complexity}`
-        : `${d.methods} 方法 · ${d.lines} 行 · CC ${d.complexity}`,
-      d.name,
-    ];
+  const classTooltip = (_v: any, _n: any, p: any) => {
+    const d = p?.payload; if (!d) return ['', ''];
+    return [`${d.methods} 方法 · ${d.lines} 行 · CC ${d.complexity}`, d.name];
   };
+  const methodTooltip = (_v: any, _n: any, p: any) => {
+    const d = p?.payload; if (!d) return ['', ''];
+    return [`${d.lines} 行 · CC ${d.complexity}`, d.name];
+  };
+
+  const starBg = {
+    background:
+      'radial-gradient(circle at 20% 20%, hsl(var(--primary) / 0.08), transparent 55%),' +
+      'radial-gradient(circle at 80% 70%, hsl(var(--accent) / 0.08), transparent 55%),' +
+      'hsl(var(--code-bg))',
+  } as const;
+  const starOverlay = (
+    <div className="pointer-events-none absolute inset-0 opacity-50"
+         style={{
+           backgroundImage:
+             'radial-gradient(hsl(var(--primary) / 0.25) 1px, transparent 1px),' +
+             'radial-gradient(hsl(var(--accent) / 0.18) 1px, transparent 1px)',
+           backgroundSize: '38px 38px, 73px 73px',
+           backgroundPosition: '0 0, 19px 19px',
+           mixBlendMode: 'overlay',
+         }} />
+  );
 
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
         <p className="text-[11px] font-mono text-muted-foreground">
-          气泡大小 = 代码行 · 颜色 = 复杂度 · X = {xLabel} · Y = 圈复杂度
+          气泡大小 = 代码行 · 颜色 = 复杂度 · 点击类气泡查看方法详情
         </p>
-        {selectedClass ? (
+        {selectedClass && (
           <button
             onClick={() => setSelectedId(null)}
             className="inline-flex items-center gap-1.5 text-xs font-mono text-primary hover:underline"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> 返回所有类
+            <ArrowLeft className="w-3.5 h-3.5" /> 清除选中
           </button>
-        ) : (
-          <span className="text-[11px] font-mono text-muted-foreground">
-            {classBubbles.length} 个类 · 点击气泡进入方法层级
-          </span>
         )}
       </div>
 
-      <div
-        className="relative rounded-lg overflow-hidden border border-border"
-        style={{
-          background:
-            'radial-gradient(circle at 20% 20%, hsl(var(--primary) / 0.08), transparent 55%),' +
-            'radial-gradient(circle at 80% 70%, hsl(var(--accent) / 0.08), transparent 55%),' +
-            'hsl(var(--code-bg))',
-        }}
-      >
-        <ResponsiveContainer width="100%" height={360}>
+      <div className="relative rounded-lg overflow-hidden border border-border" style={starBg}>
+        <ResponsiveContainer width="100%" height={320}>
           <ScatterChart margin={{ top: 16, right: 24, bottom: 28, left: 8 }}>
             <CartesianGrid stroke={C.border} strokeDasharray="2 4" opacity={0.5} />
-            <XAxis
-              type="number" dataKey="x" name={xLabel}
+            <XAxis type="number" dataKey="x" name="方法数"
               tick={{ fontSize: 10, fill: C.muted, fontFamily: 'JetBrains Mono' }}
-              label={{ value: xLabel, position: 'insideBottom', offset: -12,
-                       fill: C.muted, fontSize: 10 }}
-            />
-            <YAxis
-              type="number" dataKey="y" name="复杂度"
+              label={{ value: '方法数', position: 'insideBottom', offset: -12, fill: C.muted, fontSize: 10 }} />
+            <YAxis type="number" dataKey="y" name="复杂度"
               tick={{ fontSize: 10, fill: C.muted, fontFamily: 'JetBrains Mono' }}
-              label={{ value: 'CC', angle: -90, position: 'insideLeft',
-                       fill: C.muted, fontSize: 10 }}
-            />
+              label={{ value: 'CC', angle: -90, position: 'insideLeft', fill: C.muted, fontSize: 10 }} />
             <ZAxis type="number" dataKey="z" range={[80, 1400]} name="代码行" />
-            <Tooltip {...tooltipStyle} cursor={{ strokeDasharray: '3 3' }} formatter={tooltipFmt} />
+            <Tooltip {...tooltipStyle} cursor={{ strokeDasharray: '3 3' }} formatter={classTooltip} />
             <Scatter
-              data={data}
-              cursor={selectedClass ? 'default' : 'pointer'}
-              onClick={(d: any) => !selectedClass && setSelectedId(d.id)}
+              data={classBubbles}
+              cursor="pointer"
+              onClick={(d: any) => setSelectedId(prev => prev === d.id ? null : d.id)}
               shape={(props: any) => {
                 const { cx, cy, payload } = props;
                 const r = Math.max(6, Math.sqrt(props.size ?? 80) / 1.4);
-                const fill = complexityFill(payload.complexity);
+                const isSelected = selectedId === payload.id;
+                const isDimmed = selectedId !== null && !isSelected;
+                const baseFill = complexityFill(payload.complexity);
+                const fill = isDimmed ? C.muted : baseFill;
+                const opacity = isDimmed ? 0.35 : 1;
                 return (
-                  <g>
-                    <circle cx={cx} cy={cy} r={r * 1.6} fill={fill} opacity={0.12} />
-                    <circle cx={cx} cy={cy} r={r} fill={fill} fillOpacity={0.55}
-                            stroke={fill} strokeWidth={1.5} />
+                  <g style={{ opacity }}>
+                    <circle cx={cx} cy={cy} r={r * 1.6} fill={fill} opacity={isDimmed ? 0.06 : 0.12} />
+                    <circle cx={cx} cy={cy} r={r} fill={fill}
+                            fillOpacity={isDimmed ? 0.3 : 0.55}
+                            stroke={isSelected ? 'hsl(var(--primary))' : fill}
+                            strokeWidth={isSelected ? 2.5 : 1.5} />
+                    {isSelected && (
+                      <circle cx={cx} cy={cy} r={r + 6} fill="none"
+                              stroke="hsl(var(--primary))" strokeWidth={1} strokeDasharray="3 3" opacity={0.7} />
+                    )}
                     <text x={cx} y={cy + r + 11} textAnchor="middle"
                           fontSize={10} fontFamily="JetBrains Mono"
-                          fill="hsl(var(--foreground))">
+                          fill="hsl(var(--foreground))" opacity={isDimmed ? 0.5 : 1}>
                       {payload.name}
                     </text>
                   </g>
@@ -211,24 +217,62 @@ function ClassMethodDrilldown({ analysis }: { analysis: ProjectAnalysis }) {
             />
           </ScatterChart>
         </ResponsiveContainer>
-
-        {/* 装饰性星点，制造大数据感 */}
-        <div className="pointer-events-none absolute inset-0 opacity-50"
-             style={{
-               backgroundImage:
-                 'radial-gradient(hsl(var(--primary) / 0.25) 1px, transparent 1px),' +
-                 'radial-gradient(hsl(var(--accent) / 0.18) 1px, transparent 1px)',
-               backgroundSize: '38px 38px, 73px 73px',
-               backgroundPosition: '0 0, 19px 19px',
-               mixBlendMode: 'overlay',
-             }} />
+        {starOverlay}
       </div>
 
       <div className="flex items-center gap-3 mt-2 text-[10px] font-mono text-muted-foreground">
         <LegendDot color={C.success} label="低复杂度 CC ≤ 5" />
         <LegendDot color={C.warning} label="中等 CC 6–8" />
         <LegendDot color={C.destructive} label="高复杂度 CC > 8" />
+        <span className="ml-auto">{classBubbles.length} 个类 {selectedClass && `· 已选中 ${selectedClass.name}`}</span>
       </div>
+
+      {/* 方法层 — 选中类后展开，原类视图不隐藏 */}
+      {selectedClass && (
+        <div className="mt-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-mono text-muted-foreground">
+              <span className="text-primary">{selectedClass.name}</span> · {methodBubbles.length} 个方法
+            </p>
+          </div>
+          <div className="relative rounded-lg overflow-hidden border border-primary/40" style={starBg}>
+            <ResponsiveContainer width="100%" height={280}>
+              <ScatterChart margin={{ top: 16, right: 24, bottom: 28, left: 8 }}>
+                <CartesianGrid stroke={C.border} strokeDasharray="2 4" opacity={0.5} />
+                <XAxis type="number" dataKey="x" name="方法序号"
+                  tick={{ fontSize: 10, fill: C.muted, fontFamily: 'JetBrains Mono' }}
+                  label={{ value: '方法序号', position: 'insideBottom', offset: -12, fill: C.muted, fontSize: 10 }} />
+                <YAxis type="number" dataKey="y" name="复杂度"
+                  tick={{ fontSize: 10, fill: C.muted, fontFamily: 'JetBrains Mono' }}
+                  label={{ value: 'CC', angle: -90, position: 'insideLeft', fill: C.muted, fontSize: 10 }} />
+                <ZAxis type="number" dataKey="z" range={[80, 1400]} name="代码行" />
+                <Tooltip {...tooltipStyle} cursor={{ strokeDasharray: '3 3' }} formatter={methodTooltip} />
+                <Scatter
+                  data={methodBubbles}
+                  shape={(props: any) => {
+                    const { cx, cy, payload } = props;
+                    const r = Math.max(6, Math.sqrt(props.size ?? 80) / 1.4);
+                    const fill = complexityFill(payload.complexity);
+                    return (
+                      <g>
+                        <circle cx={cx} cy={cy} r={r * 1.6} fill={fill} opacity={0.12} />
+                        <circle cx={cx} cy={cy} r={r} fill={fill} fillOpacity={0.55}
+                                stroke={fill} strokeWidth={1.5} />
+                        <text x={cx} y={cy + r + 11} textAnchor="middle"
+                              fontSize={10} fontFamily="JetBrains Mono"
+                              fill="hsl(var(--foreground))">
+                          {payload.name}
+                        </text>
+                      </g>
+                    );
+                  }}
+                />
+              </ScatterChart>
+            </ResponsiveContainer>
+            {starOverlay}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
