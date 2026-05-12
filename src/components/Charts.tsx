@@ -60,15 +60,7 @@ export function ProjectAnalysisCharts({ analysis }: { analysis: ProjectAnalysis 
     };
   });
 
-  // Treemap data: classes -> methods
-  const treeData = analysis.classes.map(c => ({
-    name: c.name,
-    children: c.methods.map(m => ({
-      name: m.name,
-      size: m.linesOfCode,
-      complexity: m.complexity,
-    })),
-  }));
+
 
   return (
     <motion.div
