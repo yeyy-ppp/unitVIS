@@ -97,7 +97,7 @@ export function ProjectAnalysisCharts({ analysis }: { analysis: ProjectAnalysis 
       </ChartCard>
 
       <div className="lg:col-span-2">
-        <ChartCard title="类 → 方法 钻取视图（点击柱条查看该类下所有方法）" icon={Network}>
+        <ChartCard title="类 → 方法 大数据气泡图（点击气泡钻取）" icon={Sparkles}>
           <ClassMethodDrilldown analysis={analysis} />
         </ChartCard>
       </div>
@@ -105,93 +105,129 @@ export function ProjectAnalysisCharts({ analysis }: { analysis: ProjectAnalysis 
   );
 }
 
-/** 可点击的钻取视图：类柱状图 -> 方法柱状图 */
+/** 大数据气泡星图：x=方法/行号, y=复杂度, 气泡大小=代码行, 颜色=复杂度档位 */
 function ClassMethodDrilldown({ analysis }: { analysis: ProjectAnalysis }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const classData = useMemo(() => analysis.classes.map(c => {
+  const classBubbles = useMemo(() => analysis.classes.map(c => {
     const cm = computeClassMetrics(c);
-    return { id: c.id, name: c.name, lines: cm.linesOfCode, methods: cm.methodCount, complexity: cm.complexity };
+    return {
+      id: c.id, name: c.name,
+      x: cm.methodCount, y: cm.complexity, z: cm.linesOfCode,
+      methods: cm.methodCount, lines: cm.linesOfCode, complexity: cm.complexity,
+    };
   }), [analysis]);
 
   const selectedClass = analysis.classes.find(c => c.id === selectedId);
-  const methodData = selectedClass?.methods.map(m => ({
-    name: m.name, lines: m.linesOfCode, complexity: m.complexity,
-  })) ?? [];
+  const methodBubbles = useMemo(() => (selectedClass?.methods ?? []).map((m, i) => ({
+    id: m.name, name: m.name,
+    x: i + 1, y: m.complexity, z: m.linesOfCode,
+    lines: m.linesOfCode, complexity: m.complexity,
+  })), [selectedClass]);
 
   const complexityFill = (cx: number) =>
     cx > 8 ? C.destructive : cx > 5 ? C.warning : C.success;
 
-  if (selectedClass) {
-    return (
-      <div>
-        <div className="flex items-center justify-between mb-2">
+  const data = selectedClass ? methodBubbles : classBubbles;
+  const xLabel = selectedClass ? '方法序号' : '方法数';
+  const tooltipFmt = (_v: any, _n: any, p: any) => {
+    const d = p?.payload;
+    if (!d) return ['', ''];
+    return [
+      selectedClass
+        ? `${d.lines} 行 · CC ${d.complexity}`
+        : `${d.methods} 方法 · ${d.lines} 行 · CC ${d.complexity}`,
+      d.name,
+    ];
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[11px] font-mono text-muted-foreground">
+          气泡大小 = 代码行 · 颜色 = 复杂度 · X = {xLabel} · Y = 圈复杂度
+        </p>
+        {selectedClass ? (
           <button
             onClick={() => setSelectedId(null)}
             className="inline-flex items-center gap-1.5 text-xs font-mono text-primary hover:underline"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> 返回所有类
           </button>
+        ) : (
           <span className="text-[11px] font-mono text-muted-foreground">
-            {selectedClass.name} · {methodData.length} 方法
+            {classBubbles.length} 个类 · 点击气泡进入方法层级
           </span>
-        </div>
-        <ResponsiveContainer width="100%" height={Math.max(220, methodData.length * 36)}>
-          <BarChart data={methodData} layout="vertical" margin={{ top: 5, right: 32, left: 8, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.border} horizontal={false} />
-            <XAxis type="number" tick={{ fontSize: 10, fill: C.muted }} />
-            <YAxis type="category" dataKey="name" width={140}
-                   tick={{ fontSize: 10, fill: C.muted, fontFamily: 'JetBrains Mono' }} />
-            <Tooltip {...tooltipStyle}
-              formatter={(v: any, _n, p: any) => [`${v} 行 · CC ${p.payload.complexity}`, p.payload.name]} />
-            <Bar dataKey="lines" radius={[0, 4, 4, 0]}>
-              {methodData.map((m, i) => (
-                <Cell key={i} fill={complexityFill(m.complexity)} fillOpacity={0.85} />
-              ))}
-              <LabelList dataKey="complexity" position="right"
-                formatter={(v: number) => `CC ${v}`}
-                style={{ fontSize: 10, fontFamily: 'JetBrains Mono', fill: C.muted }} />
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-        <div className="flex items-center gap-3 mt-2 text-[10px] font-mono text-muted-foreground">
-          <LegendDot color={C.success} label="CC ≤ 5 低复杂度" />
-          <LegendDot color={C.warning} label="CC 6 – 8 中等" />
-          <LegendDot color={C.destructive} label="CC > 8 高复杂度" />
-        </div>
+        )}
       </div>
-    );
-  }
 
-  return (
-    <div>
-      <p className="text-[11px] font-mono text-muted-foreground mb-2">
-        柱条颜色 = 平均圈复杂度，点击任意柱条进入方法层级。
-      </p>
-      <ResponsiveContainer width="100%" height={Math.max(220, classData.length * 42)}>
-        <BarChart data={classData} layout="vertical" margin={{ top: 5, right: 40, left: 8, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke={C.border} horizontal={false} />
-          <XAxis type="number" tick={{ fontSize: 10, fill: C.muted }} />
-          <YAxis type="category" dataKey="name" width={140}
-                 tick={{ fontSize: 10, fill: C.muted, fontFamily: 'JetBrains Mono' }} />
-          <Tooltip {...tooltipStyle}
-            formatter={(v: any, _n, p: any) =>
-              [`${v} 行 · ${p.payload.methods} 方法 · CC ${p.payload.complexity}`, p.payload.name]} />
-          <Bar dataKey="lines" radius={[0, 4, 4, 0]} cursor="pointer"
-               onClick={(d: any) => setSelectedId(d.id)}>
-            {classData.map((c, i) => (
-              <Cell key={i} fill={complexityFill(c.complexity)} fillOpacity={0.85} />
-            ))}
-            <LabelList dataKey="methods" position="right"
-              formatter={(v: number) => `${v} 方法`}
-              style={{ fontSize: 10, fontFamily: 'JetBrains Mono', fill: C.muted }} />
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+      <div
+        className="relative rounded-lg overflow-hidden border border-border"
+        style={{
+          background:
+            'radial-gradient(circle at 20% 20%, hsl(var(--primary) / 0.08), transparent 55%),' +
+            'radial-gradient(circle at 80% 70%, hsl(var(--accent) / 0.08), transparent 55%),' +
+            'hsl(var(--code-bg))',
+        }}
+      >
+        <ResponsiveContainer width="100%" height={360}>
+          <ScatterChart margin={{ top: 16, right: 24, bottom: 28, left: 8 }}>
+            <CartesianGrid stroke={C.border} strokeDasharray="2 4" opacity={0.5} />
+            <XAxis
+              type="number" dataKey="x" name={xLabel}
+              tick={{ fontSize: 10, fill: C.muted, fontFamily: 'JetBrains Mono' }}
+              label={{ value: xLabel, position: 'insideBottom', offset: -12,
+                       fill: C.muted, fontSize: 10 }}
+            />
+            <YAxis
+              type="number" dataKey="y" name="复杂度"
+              tick={{ fontSize: 10, fill: C.muted, fontFamily: 'JetBrains Mono' }}
+              label={{ value: 'CC', angle: -90, position: 'insideLeft',
+                       fill: C.muted, fontSize: 10 }}
+            />
+            <ZAxis type="number" dataKey="z" range={[80, 1400]} name="代码行" />
+            <Tooltip {...tooltipStyle} cursor={{ strokeDasharray: '3 3' }} formatter={tooltipFmt} />
+            <Scatter
+              data={data}
+              cursor={selectedClass ? 'default' : 'pointer'}
+              onClick={(d: any) => !selectedClass && setSelectedId(d.id)}
+              shape={(props: any) => {
+                const { cx, cy, payload } = props;
+                const r = Math.max(6, Math.sqrt(props.size ?? 80) / 1.4);
+                const fill = complexityFill(payload.complexity);
+                return (
+                  <g>
+                    <circle cx={cx} cy={cy} r={r * 1.6} fill={fill} opacity={0.12} />
+                    <circle cx={cx} cy={cy} r={r} fill={fill} fillOpacity={0.55}
+                            stroke={fill} strokeWidth={1.5} />
+                    <text x={cx} y={cy + r + 11} textAnchor="middle"
+                          fontSize={10} fontFamily="JetBrains Mono"
+                          fill="hsl(var(--foreground))">
+                      {payload.name}
+                    </text>
+                  </g>
+                );
+              }}
+            />
+          </ScatterChart>
+        </ResponsiveContainer>
+
+        {/* 装饰性星点，制造大数据感 */}
+        <div className="pointer-events-none absolute inset-0 opacity-50"
+             style={{
+               backgroundImage:
+                 'radial-gradient(hsl(var(--primary) / 0.25) 1px, transparent 1px),' +
+                 'radial-gradient(hsl(var(--accent) / 0.18) 1px, transparent 1px)',
+               backgroundSize: '38px 38px, 73px 73px',
+               backgroundPosition: '0 0, 19px 19px',
+               mixBlendMode: 'overlay',
+             }} />
+      </div>
+
       <div className="flex items-center gap-3 mt-2 text-[10px] font-mono text-muted-foreground">
-        <LegendDot color={C.success} label="低复杂度" />
-        <LegendDot color={C.warning} label="中等" />
-        <LegendDot color={C.destructive} label="高复杂度" />
+        <LegendDot color={C.success} label="低复杂度 CC ≤ 5" />
+        <LegendDot color={C.warning} label="中等 CC 6–8" />
+        <LegendDot color={C.destructive} label="高复杂度 CC > 8" />
       </div>
     </div>
   );
