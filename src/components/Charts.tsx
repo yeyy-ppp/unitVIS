@@ -218,13 +218,7 @@ export function GenerationCharts({ summary }: { summary: GenerationSummary }) {
     { name: '错误', value: totalErrored, color: C.warning },
   ].filter(d => d.value > 0);
 
-  const covData = summary.testClasses.map(tc => ({
-    name: tc.name.replace(/Test$/, ''),
-    line: tc.lineCoverage,
-    branch: tc.branchCoverage,
-    instruction: tc.instructionCoverage ?? tc.lineCoverage,
-    mutation: tc.mutationScore,
-  }));
+
 
   const overallRadar = [
     { metric: '行覆盖', value: summary.overallLineCoverage },
