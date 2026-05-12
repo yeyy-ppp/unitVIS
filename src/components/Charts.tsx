@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  PieChart, Pie, Cell, Legend, Treemap, RadarChart, PolarGrid, PolarAngleAxis,
-  PolarRadiusAxis, Radar,
+  PieChart, Pie, Cell, Legend, RadarChart, PolarGrid, PolarAngleAxis,
+  PolarRadiusAxis, Radar, LabelList,
 } from 'recharts';
-import { useState } from 'react';
-import { ChevronRight, ChevronDown, BarChart3, PieChart as PieIcon, Network, Activity } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { ArrowLeft, BarChart3, PieChart as PieIcon, Network, Activity } from 'lucide-react';
 import {
   ProjectAnalysis, GenerationSummary,
   computeClassMetrics, computeTestClassMetrics,
@@ -60,15 +60,7 @@ export function ProjectAnalysisCharts({ analysis }: { analysis: ProjectAnalysis 
     };
   });
 
-  // Treemap data: classes -> methods
-  const treeData = analysis.classes.map(c => ({
-    name: c.name,
-    children: c.methods.map(m => ({
-      name: m.name,
-      size: m.linesOfCode,
-      complexity: m.complexity,
-    })),
-  }));
+
 
   return (
     <motion.div
@@ -104,86 +96,112 @@ export function ProjectAnalysisCharts({ analysis }: { analysis: ProjectAnalysis 
       </ChartCard>
 
       <div className="lg:col-span-2">
-        <ChartCard title="类 → 方法 树状结构（节点大小 = 代码行数）" icon={Network}>
-          <ClassMethodTree analysis={analysis} />
-          <div className="mt-3 h-44">
-            <ResponsiveContainer width="100%" height="100%">
-              <Treemap
-                data={treeData}
-                dataKey="size"
-                stroke="hsl(var(--card))"
-                fill={C.primary}
-                content={<TreeCell />}
-              />
-            </ResponsiveContainer>
-          </div>
+        <ChartCard title="类 → 方法 钻取视图（点击柱条查看该类下所有方法）" icon={Network}>
+          <ClassMethodDrilldown analysis={analysis} />
         </ChartCard>
       </div>
     </motion.div>
   );
 }
 
-function TreeCell(props: any) {
-  const { x, y, width, height, name, complexity } = props;
-  if (width < 28 || height < 18) {
-    return <rect x={x} y={y} width={width} height={height} fill="hsl(var(--muted))" stroke="hsl(var(--card))" />;
+/** 可点击的钻取视图：类柱状图 -> 方法柱状图 */
+function ClassMethodDrilldown({ analysis }: { analysis: ProjectAnalysis }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const classData = useMemo(() => analysis.classes.map(c => {
+    const cm = computeClassMetrics(c);
+    return { id: c.id, name: c.name, lines: cm.linesOfCode, methods: cm.methodCount, complexity: cm.complexity };
+  }), [analysis]);
+
+  const selectedClass = analysis.classes.find(c => c.id === selectedId);
+  const methodData = selectedClass?.methods.map(m => ({
+    name: m.name, lines: m.linesOfCode, complexity: m.complexity,
+  })) ?? [];
+
+  const complexityFill = (cx: number) =>
+    cx > 8 ? C.destructive : cx > 5 ? C.warning : C.success;
+
+  if (selectedClass) {
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <button
+            onClick={() => setSelectedId(null)}
+            className="inline-flex items-center gap-1.5 text-xs font-mono text-primary hover:underline"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> 返回所有类
+          </button>
+          <span className="text-[11px] font-mono text-muted-foreground">
+            {selectedClass.name} · {methodData.length} 方法
+          </span>
+        </div>
+        <ResponsiveContainer width="100%" height={Math.max(220, methodData.length * 36)}>
+          <BarChart data={methodData} layout="vertical" margin={{ top: 5, right: 32, left: 8, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.border} horizontal={false} />
+            <XAxis type="number" tick={{ fontSize: 10, fill: C.muted }} />
+            <YAxis type="category" dataKey="name" width={140}
+                   tick={{ fontSize: 10, fill: C.muted, fontFamily: 'JetBrains Mono' }} />
+            <Tooltip {...tooltipStyle}
+              formatter={(v: any, _n, p: any) => [`${v} 行 · CC ${p.payload.complexity}`, p.payload.name]} />
+            <Bar dataKey="lines" radius={[0, 4, 4, 0]}>
+              {methodData.map((m, i) => (
+                <Cell key={i} fill={complexityFill(m.complexity)} fillOpacity={0.85} />
+              ))}
+              <LabelList dataKey="complexity" position="right"
+                formatter={(v: number) => `CC ${v}`}
+                style={{ fontSize: 10, fontFamily: 'JetBrains Mono', fill: C.muted }} />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+        <div className="flex items-center gap-3 mt-2 text-[10px] font-mono text-muted-foreground">
+          <LegendDot color={C.success} label="CC ≤ 5 低复杂度" />
+          <LegendDot color={C.warning} label="CC 6 – 8 中等" />
+          <LegendDot color={C.destructive} label="CC > 8 高复杂度" />
+        </div>
+      </div>
+    );
   }
-  const cx = complexity || 1;
-  const fill =
-    cx > 8 ? 'hsl(var(--destructive) / 0.7)' :
-    cx > 5 ? 'hsl(var(--warning) / 0.7)' :
-             'hsl(var(--success) / 0.55)';
+
   return (
-    <g>
-      <rect x={x} y={y} width={width} height={height} fill={fill} stroke="hsl(var(--card))" strokeWidth={2} />
-      {width > 60 && height > 30 && (
-        <text x={x + 6} y={y + 16} fill="hsl(var(--foreground))"
-              fontSize={10} fontFamily="JetBrains Mono">{name}</text>
-      )}
-    </g>
+    <div>
+      <p className="text-[11px] font-mono text-muted-foreground mb-2">
+        柱条颜色 = 平均圈复杂度，点击任意柱条进入方法层级。
+      </p>
+      <ResponsiveContainer width="100%" height={Math.max(220, classData.length * 42)}>
+        <BarChart data={classData} layout="vertical" margin={{ top: 5, right: 40, left: 8, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={C.border} horizontal={false} />
+          <XAxis type="number" tick={{ fontSize: 10, fill: C.muted }} />
+          <YAxis type="category" dataKey="name" width={140}
+                 tick={{ fontSize: 10, fill: C.muted, fontFamily: 'JetBrains Mono' }} />
+          <Tooltip {...tooltipStyle}
+            formatter={(v: any, _n, p: any) =>
+              [`${v} 行 · ${p.payload.methods} 方法 · CC ${p.payload.complexity}`, p.payload.name]} />
+          <Bar dataKey="lines" radius={[0, 4, 4, 0]} cursor="pointer"
+               onClick={(d: any) => setSelectedId(d.id)}>
+            {classData.map((c, i) => (
+              <Cell key={i} fill={complexityFill(c.complexity)} fillOpacity={0.85} />
+            ))}
+            <LabelList dataKey="methods" position="right"
+              formatter={(v: number) => `${v} 方法`}
+              style={{ fontSize: 10, fontFamily: 'JetBrains Mono', fill: C.muted }} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+      <div className="flex items-center gap-3 mt-2 text-[10px] font-mono text-muted-foreground">
+        <LegendDot color={C.success} label="低复杂度" />
+        <LegendDot color={C.warning} label="中等" />
+        <LegendDot color={C.destructive} label="高复杂度" />
+      </div>
+    </div>
   );
 }
 
-/** 可点击的树状节点（类 -> 方法） */
-function ClassMethodTree({ analysis }: { analysis: ProjectAnalysis }) {
-  const [open, setOpen] = useState<Record<string, boolean>>({});
+function LegendDot({ color, label }: { color: string; label: string }) {
   return (
-    <div className="rounded-lg border border-border divide-y divide-border max-h-60 overflow-auto">
-      {analysis.classes.map(c => {
-        const cm = computeClassMetrics(c);
-        const isOpen = open[c.id];
-        return (
-          <div key={c.id}>
-            <button
-              onClick={() => setOpen(o => ({ ...o, [c.id]: !o[c.id] }))}
-              className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/40"
-            >
-              {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                      : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
-              <span className="text-sm font-mono text-card-foreground flex-1">{c.name}</span>
-              <span className="text-[10px] font-mono text-muted-foreground">
-                {cm.methodCount} 方法 · {cm.linesOfCode} 行 · CC {cm.complexity}
-              </span>
-            </button>
-            {isOpen && (
-              <div className="bg-muted/20">
-                {c.methods.map(m => (
-                  <div key={m.name} className="pl-9 pr-3 py-1.5 flex items-center gap-2">
-                    <span className="text-xs font-mono text-foreground flex-1 truncate">{m.name}</span>
-                    <span className="text-[10px] font-mono text-muted-foreground">{m.linesOfCode} 行</span>
-                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${
-                      m.complexity > 8 ? 'bg-destructive/10 text-destructive' :
-                      m.complexity > 5 ? 'bg-warning/10 text-warning' :
-                      'bg-success/10 text-success'
-                    }`}>CC {m.complexity}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
+    <span className="inline-flex items-center gap-1">
+      <span className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />
+      <span>{label}</span>
+    </span>
   );
 }
 
@@ -200,13 +218,7 @@ export function GenerationCharts({ summary }: { summary: GenerationSummary }) {
     { name: '错误', value: totalErrored, color: C.warning },
   ].filter(d => d.value > 0);
 
-  const covData = summary.testClasses.map(tc => ({
-    name: tc.name.replace(/Test$/, ''),
-    line: tc.lineCoverage,
-    branch: tc.branchCoverage,
-    instruction: tc.instructionCoverage ?? tc.lineCoverage,
-    mutation: tc.mutationScore,
-  }));
+
 
   const overallRadar = [
     { metric: '行覆盖', value: summary.overallLineCoverage },
@@ -222,7 +234,7 @@ export function GenerationCharts({ summary }: { summary: GenerationSummary }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3 }}
-      className="grid lg:grid-cols-3 gap-4"
+      className="grid lg:grid-cols-2 gap-4"
     >
       <ChartCard title="测试结果分布" icon={PieIcon}>
         <ResponsiveContainer width="100%" height={220}>
@@ -246,22 +258,6 @@ export function GenerationCharts({ summary }: { summary: GenerationSummary }) {
             <Radar name="覆盖率" dataKey="value" stroke={C.primary} fill={C.primary} fillOpacity={0.3} />
             <Tooltip {...tooltipStyle} />
           </RadarChart>
-        </ResponsiveContainer>
-      </ChartCard>
-
-      <ChartCard title="各测试类覆盖率对比" icon={BarChart3}>
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={covData} margin={{ top: 5, right: 6, left: -16, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-            <XAxis dataKey="name" tick={{ fontSize: 9, fill: C.muted, fontFamily: 'JetBrains Mono' }} />
-            <YAxis tick={{ fontSize: 10, fill: C.muted }} domain={[0, 100]} />
-            <Tooltip {...tooltipStyle} />
-            <Legend wrapperStyle={{ fontSize: 10 }} />
-            <Bar dataKey="line" name="行" fill={C.primary} radius={[3, 3, 0, 0]} />
-            <Bar dataKey="branch" name="分支" fill={C.warning} radius={[3, 3, 0, 0]} />
-            <Bar dataKey="instruction" name="指令" fill={C.info} radius={[3, 3, 0, 0]} />
-            <Bar dataKey="mutation" name="变异" fill={C.accent} radius={[3, 3, 0, 0]} />
-          </BarChart>
         </ResponsiveContainer>
       </ChartCard>
     </motion.div>
