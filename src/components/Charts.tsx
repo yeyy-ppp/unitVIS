@@ -171,96 +171,47 @@ function ClassMethodDrilldown({ analysis }: { analysis: ProjectAnalysis }) {
         )}
       </div>
 
-      <div className="relative rounded-lg overflow-hidden border border-border" style={starBg}>
-        <ResponsiveContainer width="100%" height={320}>
-          <ScatterChart margin={{ top: 16, right: 24, bottom: 28, left: 8 }}>
-            <CartesianGrid stroke={C.border} strokeDasharray="2 4" opacity={0.5} />
-            <XAxis type="number" dataKey="x" name="方法数"
-              tick={{ fontSize: 10, fill: C.muted, fontFamily: 'JetBrains Mono' }}
-              label={{ value: '方法数', position: 'insideBottom', offset: -12, fill: C.muted, fontSize: 10 }} />
-            <YAxis type="number" dataKey="y" name="复杂度"
-              tick={{ fontSize: 10, fill: C.muted, fontFamily: 'JetBrains Mono' }}
-              label={{ value: 'CC', angle: -90, position: 'insideLeft', fill: C.muted, fontSize: 10 }} />
-            <ZAxis type="number" dataKey="z" range={[80, 1400]} name="代码行" />
-            <Tooltip {...tooltipStyle} cursor={{ strokeDasharray: '3 3' }} formatter={classTooltip} />
-            <Scatter
-              data={classBubbles}
-              cursor="pointer"
-              onClick={(d: any) => setSelectedId(prev => prev === d.id ? null : d.id)}
-              shape={(props: any) => {
-                const { cx, cy, payload } = props;
-                const r = Math.max(6, Math.sqrt(props.size ?? 80) / 1.4);
-                const isSelected = selectedId === payload.id;
-                const isDimmed = selectedId !== null && !isSelected;
-                const baseFill = complexityFill(payload.complexity);
-                const fill = isDimmed ? C.muted : baseFill;
-                const opacity = isDimmed ? 0.35 : 1;
-                return (
-                  <g style={{ opacity }}>
-                    <circle cx={cx} cy={cy} r={r * 1.6} fill={fill} opacity={isDimmed ? 0.06 : 0.12} />
-                    <circle cx={cx} cy={cy} r={r} fill={fill}
-                            fillOpacity={isDimmed ? 0.3 : 0.55}
-                            stroke={isSelected ? 'hsl(var(--primary))' : fill}
-                            strokeWidth={isSelected ? 2.5 : 1.5} />
-                    {isSelected && (
-                      <circle cx={cx} cy={cy} r={r + 6} fill="none"
-                              stroke="hsl(var(--primary))" strokeWidth={1} strokeDasharray="3 3" opacity={0.7} />
-                    )}
-                    <text x={cx} y={cy + r + 11} textAnchor="middle"
-                          fontSize={10} fontFamily="JetBrains Mono"
-                          fill="hsl(var(--foreground))" opacity={isDimmed ? 0.5 : 1}>
-                      {payload.name}
-                    </text>
-                  </g>
-                );
-              }}
-            />
-          </ScatterChart>
-        </ResponsiveContainer>
-        {starOverlay}
-      </div>
-
-      <div className="flex items-center gap-3 mt-2 text-[10px] font-mono text-muted-foreground">
-        <LegendDot color={C.success} label="低复杂度 CC ≤ 5" />
-        <LegendDot color={C.warning} label="中等 CC 6–8" />
-        <LegendDot color={C.destructive} label="高复杂度 CC > 8" />
-        <span className="ml-auto">{classBubbles.length} 个类 {selectedClass && `· 已选中 ${selectedClass.name}`}</span>
-      </div>
-
-      {/* 方法层 — 选中类后展开，原类视图不隐藏 */}
-      {selectedClass && (
-        <div className="mt-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] font-mono text-muted-foreground">
-              <span className="text-primary">{selectedClass.name}</span> · {methodBubbles.length} 个方法
-            </p>
-          </div>
-          <div className="relative rounded-lg overflow-hidden border border-primary/40" style={starBg}>
-            <ResponsiveContainer width="100%" height={280}>
+      <div className="grid lg:grid-cols-2 gap-4">
+        {/* 左：类气泡图 */}
+        <div>
+          <div className="relative rounded-lg overflow-hidden border border-border" style={starBg}>
+            <ResponsiveContainer width="100%" height={340}>
               <ScatterChart margin={{ top: 16, right: 24, bottom: 28, left: 8 }}>
                 <CartesianGrid stroke={C.border} strokeDasharray="2 4" opacity={0.5} />
-                <XAxis type="number" dataKey="x" name="方法序号"
+                <XAxis type="number" dataKey="x" name="方法数"
                   tick={{ fontSize: 10, fill: C.muted, fontFamily: 'JetBrains Mono' }}
-                  label={{ value: '方法序号', position: 'insideBottom', offset: -12, fill: C.muted, fontSize: 10 }} />
+                  label={{ value: '方法数', position: 'insideBottom', offset: -12, fill: C.muted, fontSize: 10 }} />
                 <YAxis type="number" dataKey="y" name="复杂度"
                   tick={{ fontSize: 10, fill: C.muted, fontFamily: 'JetBrains Mono' }}
                   label={{ value: 'CC', angle: -90, position: 'insideLeft', fill: C.muted, fontSize: 10 }} />
                 <ZAxis type="number" dataKey="z" range={[80, 1400]} name="代码行" />
-                <Tooltip {...tooltipStyle} cursor={{ strokeDasharray: '3 3' }} formatter={methodTooltip} />
+                <Tooltip {...tooltipStyle} cursor={{ strokeDasharray: '3 3' }} formatter={classTooltip} />
                 <Scatter
-                  data={methodBubbles}
+                  data={classBubbles}
+                  cursor="pointer"
+                  onClick={(d: any) => setSelectedId(prev => prev === d.id ? null : d.id)}
                   shape={(props: any) => {
                     const { cx, cy, payload } = props;
                     const r = Math.max(6, Math.sqrt(props.size ?? 80) / 1.4);
-                    const fill = complexityFill(payload.complexity);
+                    const isSelected = selectedId === payload.id;
+                    const isDimmed = selectedId !== null && !isSelected;
+                    const baseFill = complexityFill(payload.complexity);
+                    const fill = isDimmed ? C.muted : baseFill;
+                    const opacity = isDimmed ? 0.35 : 1;
                     return (
-                      <g>
-                        <circle cx={cx} cy={cy} r={r * 1.6} fill={fill} opacity={0.12} />
-                        <circle cx={cx} cy={cy} r={r} fill={fill} fillOpacity={0.55}
-                                stroke={fill} strokeWidth={1.5} />
+                      <g style={{ opacity }}>
+                        <circle cx={cx} cy={cy} r={r * 1.6} fill={fill} opacity={isDimmed ? 0.06 : 0.12} />
+                        <circle cx={cx} cy={cy} r={r} fill={fill}
+                                fillOpacity={isDimmed ? 0.3 : 0.55}
+                                stroke={isSelected ? 'hsl(var(--primary))' : fill}
+                                strokeWidth={isSelected ? 2.5 : 1.5} />
+                        {isSelected && (
+                          <circle cx={cx} cy={cy} r={r + 6} fill="none"
+                                  stroke="hsl(var(--primary))" strokeWidth={1} strokeDasharray="3 3" opacity={0.7} />
+                        )}
                         <text x={cx} y={cy + r + 11} textAnchor="middle"
                               fontSize={10} fontFamily="JetBrains Mono"
-                              fill="hsl(var(--foreground))">
+                              fill="hsl(var(--foreground))" opacity={isDimmed ? 0.5 : 1}>
                           {payload.name}
                         </text>
                       </g>
@@ -271,8 +222,67 @@ function ClassMethodDrilldown({ analysis }: { analysis: ProjectAnalysis }) {
             </ResponsiveContainer>
             {starOverlay}
           </div>
+          <div className="flex items-center gap-3 mt-2 text-[10px] font-mono text-muted-foreground flex-wrap">
+            <LegendDot color={C.success} label="低复杂度 CC ≤ 5" />
+            <LegendDot color={C.warning} label="中等 CC 6–8" />
+            <LegendDot color={C.destructive} label="高复杂度 CC > 8" />
+            <span className="ml-auto">{classBubbles.length} 个类</span>
+          </div>
         </div>
-      )}
+
+        {/* 右：方法气泡图 */}
+        <div>
+          {selectedClass ? (
+            <>
+              <div className="relative rounded-lg overflow-hidden border border-primary/40" style={starBg}>
+                <ResponsiveContainer width="100%" height={340}>
+                  <ScatterChart margin={{ top: 16, right: 24, bottom: 28, left: 8 }}>
+                    <CartesianGrid stroke={C.border} strokeDasharray="2 4" opacity={0.5} />
+                    <XAxis type="number" dataKey="x" name="方法序号"
+                      tick={{ fontSize: 10, fill: C.muted, fontFamily: 'JetBrains Mono' }}
+                      label={{ value: '方法序号', position: 'insideBottom', offset: -12, fill: C.muted, fontSize: 10 }} />
+                    <YAxis type="number" dataKey="y" name="复杂度"
+                      tick={{ fontSize: 10, fill: C.muted, fontFamily: 'JetBrains Mono' }}
+                      label={{ value: 'CC', angle: -90, position: 'insideLeft', fill: C.muted, fontSize: 10 }} />
+                    <ZAxis type="number" dataKey="z" range={[80, 1400]} name="代码行" />
+                    <Tooltip {...tooltipStyle} cursor={{ strokeDasharray: '3 3' }} formatter={methodTooltip} />
+                    <Scatter
+                      data={methodBubbles}
+                      shape={(props: any) => {
+                        const { cx, cy, payload } = props;
+                        const r = Math.max(6, Math.sqrt(props.size ?? 80) / 1.4);
+                        const fill = complexityFill(payload.complexity);
+                        return (
+                          <g>
+                            <circle cx={cx} cy={cy} r={r * 1.6} fill={fill} opacity={0.12} />
+                            <circle cx={cx} cy={cy} r={r} fill={fill} fillOpacity={0.55}
+                                    stroke={fill} strokeWidth={1.5} />
+                            <text x={cx} y={cy + r + 11} textAnchor="middle"
+                                  fontSize={10} fontFamily="JetBrains Mono"
+                                  fill="hsl(var(--foreground))">
+                              {payload.name}
+                            </text>
+                          </g>
+                        );
+                      }}
+                    />
+                  </ScatterChart>
+                </ResponsiveContainer>
+                {starOverlay}
+              </div>
+              <div className="flex items-center mt-2 text-[10px] font-mono text-muted-foreground">
+                <span className="text-primary">{selectedClass.name}</span>
+                <span className="ml-auto">{methodBubbles.length} 个方法</span>
+              </div>
+            </>
+          ) : (
+            <div className="h-[340px] rounded-lg border border-dashed border-border flex items-center justify-center text-xs font-mono text-muted-foreground"
+                 style={starBg}>
+              点击左侧任一类气泡查看其方法详情
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
