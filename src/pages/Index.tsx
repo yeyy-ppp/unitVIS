@@ -77,6 +77,7 @@ const Index = () => {
           })}
         </motion.div>
 
+        {activeTab === 'agents' && <AgentPipelinePanel summary={summary} fixHistory={fixHistory} />}
         {activeTab === 'analysis' && (
           <>
             {testIntent && (
