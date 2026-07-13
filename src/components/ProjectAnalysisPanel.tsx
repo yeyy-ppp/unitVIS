@@ -194,7 +194,7 @@ export default function ProjectAnalysisPanel({ analysis }: Props) {
 function MethodBodyDialog({ method, onClose }: { method: MethodInfo | null; onClose: () => void }) {
   return (
     <Dialog open={!!method} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
         {method && (
           <>
             <DialogHeader>
@@ -209,9 +209,7 @@ function MethodBodyDialog({ method, onClose }: { method: MethodInfo | null; onCl
                 <p className="text-sm text-card-foreground">{method.focus}</p>
               </div>
             )}
-            <pre className="text-xs font-mono bg-code-bg border border-code-border rounded-lg p-4 overflow-auto max-h-[55vh] text-foreground whitespace-pre">
-{method.body}
-            </pre>
+            <CodeGraphView body={method.body} title={`${method.name}(${method.params})`} />
           </>
         )}
       </DialogContent>
