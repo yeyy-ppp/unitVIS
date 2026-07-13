@@ -11,6 +11,8 @@ import {
 import StatCard from './StatCard';
 import { MetricsDiff, CodeBlock } from './FixHistoryPanel';
 import { GenerationCharts, SourceCoverageView } from './Charts';
+import CodeGraphView from './CodeGraphView';
+import MutationAssertionPanel from './MutationAssertionPanel';
 import { useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -246,6 +248,8 @@ export default function GenerationResultPanel({ summary, fixHistory, onApplyFix 
       </div>
 
       <GenerationCharts summary={summary} />
+
+      <MutationAssertionPanel summary={summary} />
 
       <motion.div
         initial={{ opacity: 0 }}
