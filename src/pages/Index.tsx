@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FlaskConical, ScanSearch, Code2, Upload, History } from 'lucide-react';
+import { FlaskConical, ScanSearch, Code2, Upload, History, Bot } from 'lucide-react';
 import {
   mockProjectAnalysis, mockGenerationResult,
   ProjectAnalysis, GenerationSummary, FixRecord,
@@ -9,17 +9,19 @@ import ProjectAnalysisPanel from '@/components/ProjectAnalysisPanel';
 import GenerationResultPanel from '@/components/GenerationResultPanel';
 import UploadPanel from '@/components/UploadPanel';
 import FixHistoryPanel from '@/components/FixHistoryPanel';
+import AgentPipelinePanel from '@/components/AgentPipelinePanel';
 
-type Tab = 'analysis' | 'generation' | 'upload' | 'history';
+type Tab = 'agents' | 'analysis' | 'generation' | 'upload' | 'history';
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState<Tab>('analysis');
+  const [activeTab, setActiveTab] = useState<Tab>('agents');
   const [analysis, setAnalysis] = useState<ProjectAnalysis>(mockProjectAnalysis);
   const [summary, setSummary] = useState<GenerationSummary>(mockGenerationResult);
   const [testIntent, setTestIntent] = useState('');
   const [fixHistory, setFixHistory] = useState<FixRecord[]>([]);
 
   const tabs: { key: Tab; label: string; icon: React.ElementType; badge?: number }[] = [
+    { key: 'agents', label: '多智能体', icon: Bot },
     { key: 'analysis', label: '项目分析', icon: ScanSearch },
     { key: 'generation', label: '生成结果', icon: Code2 },
     { key: 'upload', label: '上传代码', icon: Upload },
@@ -75,6 +77,7 @@ const Index = () => {
           })}
         </motion.div>
 
+        {activeTab === 'agents' && <AgentPipelinePanel summary={summary} fixHistory={fixHistory} />}
         {activeTab === 'analysis' && (
           <>
             {testIntent && (
