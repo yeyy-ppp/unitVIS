@@ -6,6 +6,7 @@ import {
 } from '@/data/mockTestData';
 import StatCard from './StatCard';
 import { ProjectAnalysisCharts } from './Charts';
+import CodeGraphView from './CodeGraphView';
 import { useState, useMemo } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
