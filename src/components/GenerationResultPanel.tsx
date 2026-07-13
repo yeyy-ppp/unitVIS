@@ -408,11 +408,16 @@ function TestMethodDialog({
                 </div>
 
                 {method.targetSource && (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1.5">
-                      该测试对待测方法 <span className="font-mono text-foreground">{method.targetMethod}</span> 的逐行覆盖效果
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      该测试对待测方法 <span className="font-mono text-foreground">{method.targetMethod}</span> 的逐行覆盖 + 代码状态图
                     </p>
                     <SourceCoverageView source={method.targetSource} coverage={method.targetCoverage} />
+                    <CodeGraphView
+                      title={`${method.targetMethod} · CFG`}
+                      body={method.targetSource.map(l => l.code).join('\n')}
+                      coverage={method.targetSource.map(l => ({ line: l.line, status: l.status }))}
+                    />
                   </div>
                 )}
 
