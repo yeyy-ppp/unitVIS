@@ -21,7 +21,7 @@ export interface Mutant {
   assertionAfter?: { code: string; result: string };
 }
 
-const OPERATOR_TEMPLATES: Record<string, { desc: string; mutate: (s: string) => { orig: string; mut: string; assertVal: [string, string] } }> = {
+const OPERATOR_TEMPLATES: Record<string, { desc: string; mutate: () => { orig: string; mut: string; assertVal: [string, string] } }> = {
   CONDITIONALS: {
     desc: '条件边界变异：将 >= 替换为 >，改变边界条件',
     mutate: () => ({ orig: 'if (total >= threshold) {', mut: 'if (total > threshold) {', assertVal: ['true', 'false'] }),
