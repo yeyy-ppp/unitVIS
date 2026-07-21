@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { Shield, CheckCircle2, XCircle, Zap, ListChecks, Target } from 'lucide-react';
+import { Shield, CheckCircle2, XCircle, Zap, ListChecks, Target, MousePointerClick } from 'lucide-react';
 import {
   GenerationSummary, computeGenerationTotals, computeTestClassMetrics,
 } from '@/data/mockTestData';
+import MutantDetailDialog from './MutantDetailDialog';
+
 
 const C = {
   primary: 'hsl(var(--primary))',
@@ -106,6 +109,7 @@ interface Props {
 export default function MutationAssertionPanel({ summary }: Props) {
   const mut = deriveMutation(summary);
   const asr = deriveAssertions(summary);
+  const [filter, setFilter] = useState<{ operator?: string; targetClass?: string } | null>(null);
 
   // Per-class mutation stacked bar
   const perClass = summary.testClasses.map(tc => {
@@ -115,6 +119,9 @@ export default function MutationAssertionPanel({ summary }: Props) {
     const survived = total - killed;
     return { name: tc.targetClass, killed, survived, mutation: tc.mutationScore };
   });
+
+  const openOperator = (name?: string) => name && setFilter({ operator: name });
+  const openClass = (name?: string) => name && setFilter({ targetClass: name });
 
   return (
     <motion.div
@@ -128,6 +135,11 @@ export default function MutationAssertionPanel({ summary }: Props) {
         <Kpi label="Killed" value={mut.killed} extra={`${mut.killRate}%`} icon={CheckCircle2} tone="success" />
         <Kpi label="Survived" value={mut.survived} icon={XCircle} tone="destructive" />
         <Kpi label="断言总数 · 密度" value={asr.total} extra={`${asr.density} / test`} icon={ListChecks} tone="info" />
+      </div>
+
+      <div className="rounded-md border border-dashed border-primary/30 bg-primary/5 px-3 py-2 flex items-center gap-2 text-xs text-muted-foreground">
+        <MousePointerClick className="w-3.5 h-3.5 text-primary" />
+        点击「变异算子」条形或「各待测类」条形，查看变异体触发的断言变化、击杀原因与差异对比。
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
@@ -146,31 +158,37 @@ export default function MutationAssertionPanel({ summary }: Props) {
         </Card>
 
         {/* Mutation operators killed vs survived */}
-        <Card title="变异算子 · Killed vs Survived" icon={Zap}>
+        <Card title="变异算子 · Killed vs Survived · 可点击" icon={Zap}>
           <ResponsiveContainer width="100%" height={230}>
-            <BarChart data={mut.operators} margin={{ top: 5, right: 12, left: -12, bottom: 0 }}>
+            <BarChart data={mut.operators} margin={{ top: 5, right: 12, left: -12, bottom: 0 }}
+                      onClick={(e: any) => openOperator(e?.activeLabel)}>
               <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
               <XAxis dataKey="name" tick={{ fontSize: 9, fill: C.muted, fontFamily: 'JetBrains Mono' }} angle={-18} height={40} textAnchor="end" />
               <YAxis tick={{ fontSize: 10, fill: C.muted }} />
-              <Tooltip {...tooltipStyle} />
+              <Tooltip {...tooltipStyle} cursor={{ fill: 'hsl(var(--muted) / 0.4)' }} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="killed"   name="Killed"   stackId="m" fill={C.success} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="survived" name="Survived" stackId="m" fill={C.destructive} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="killed"   name="Killed"   stackId="m" fill={C.success} radius={[4, 4, 0, 0]}
+                   cursor="pointer" onClick={(d: any) => openOperator(d?.name)} />
+              <Bar dataKey="survived" name="Survived" stackId="m" fill={C.destructive} radius={[4, 4, 0, 0]}
+                   cursor="pointer" onClick={(d: any) => openOperator(d?.name)} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
 
         {/* Per-class mutation */}
-        <Card title="各待测类 · 变异得分" icon={Target}>
+        <Card title="各待测类 · 变异得分 · 可点击" icon={Target}>
           <ResponsiveContainer width="100%" height={230}>
-            <BarChart data={perClass} margin={{ top: 5, right: 12, left: -12, bottom: 0 }}>
+            <BarChart data={perClass} margin={{ top: 5, right: 12, left: -12, bottom: 0 }}
+                      onClick={(e: any) => openClass(e?.activeLabel)}>
               <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
               <XAxis dataKey="name" tick={{ fontSize: 9, fill: C.muted, fontFamily: 'JetBrains Mono' }} angle={-15} height={40} textAnchor="end" />
               <YAxis tick={{ fontSize: 10, fill: C.muted }} />
-              <Tooltip {...tooltipStyle} />
+              <Tooltip {...tooltipStyle} cursor={{ fill: 'hsl(var(--muted) / 0.4)' }} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="killed"   name="Killed"   stackId="c" fill={C.success} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="survived" name="Survived" stackId="c" fill={C.destructive} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="killed"   name="Killed"   stackId="c" fill={C.success} radius={[4, 4, 0, 0]}
+                   cursor="pointer" onClick={(d: any) => openClass(d?.name)} />
+              <Bar dataKey="survived" name="Survived" stackId="c" fill={C.destructive} radius={[4, 4, 0, 0]}
+                   cursor="pointer" onClick={(d: any) => openClass(d?.name)} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -189,6 +207,13 @@ export default function MutationAssertionPanel({ summary }: Props) {
           </ResponsiveContainer>
         </Card>
       </div>
+
+      <MutantDetailDialog
+        open={!!filter}
+        onOpenChange={(o) => !o && setFilter(null)}
+        summary={summary}
+        filter={filter}
+      />
     </motion.div>
   );
 }
