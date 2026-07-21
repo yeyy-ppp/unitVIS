@@ -104,12 +104,13 @@ export default function MCPPanel() {
       };
       setMessages(prev => [...prev.slice(-40), outMsg]);
       setTimeout(() => {
-        setMessages(prev => [...prev, {
+        const inMsg: MCPMessage = {
           id: 'i' + Date.now(), ts: now(), dir: 'in',
           from: s.name, to: a.id, method: 'result',
           payload: `{"ok":true,"latency":${s.latency}}`,
           status: 'ok',
-        }].slice(-40));
+        };
+        setMessages(prev => [...prev, inMsg].slice(-40));
       }, 500 + Math.random() * 800);
     }, 3200);
     return () => clearInterval(iv);
@@ -162,11 +163,12 @@ export default function MCPPanel() {
   function sendProbe() {
     const target = servers.find(s => s.state === 'connected');
     if (!target) return;
-    setMessages(prev => [...prev, {
+    const probe: MCPMessage = {
       id: 'p' + Date.now(), ts: now(), dir: 'out',
       from: agent.id, to: target.name, method: 'tools/list',
       payload: `{"probe":true,"agent":"${agent.id}"}`, status: 'pending',
-    }].slice(-40));
+    };
+    setMessages(prev => [...prev, probe].slice(-40));
   }
 
   return (
