@@ -70,7 +70,7 @@ const stateStyle: Record<ConnState, string> = {
 const now = () => new Date().toLocaleTimeString('en-GB', { hour12: false }) + '.' +
   String(new Date().getMilliseconds()).padStart(3, '0');
 
-function seedMessages(): MCPMessage[] {
+const seedMessages = (): MCPMessage[] => {
   return [
     { id: 'm1', ts: now(), dir: 'out', from: 'analyzer',  to: 'ast-tools',    method: 'tools/call:parseAST',      payload: '{"path":"src/main/java/**"}',           status: 'ok' },
     { id: 'm2', ts: now(), dir: 'in',  from: 'ast-tools', to: 'analyzer',     method: 'result',                    payload: '{"classes":6,"methods":24}',            status: 'ok' },
